@@ -1,0 +1,13 @@
+{"operation":"union",
+    "right":
+        {
+        "operation":"difference",
+        "left":{"operation":"union", "left": "mesh/stls/parenchyma.stl",
+                            "right": "mesh/stls/cord.stl"},
+        "right":{"operation":"union", "left": "mesh/stls/aqueduct.stl",
+                        "right":"mesh/stls/ventricle.stl"}
+        },
+    "left":
+    {"operation":"union", "left": "mesh/stls/skull.stl",
+                        "right":"mesh/stls/canal.stl"}                
+}
