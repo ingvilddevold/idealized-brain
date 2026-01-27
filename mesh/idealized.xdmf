@@ -1,17 +1,1 @@
-<?xml version="1.0"?>
-<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
-<Xdmf Version="3.0" xmlns:xi="http://www.w3.org/2001/XInclude">
-  <Domain>
-    <Grid Name="mesh" GridType="Uniform">
-      <Topology NumberOfElements="18067" TopologyType="Tetrahedron" NodesPerElement="4">
-        <DataItem Dimensions="18067 4" NumberType="UInt" Format="HDF">idealized.h5:/MeshFunction/0/mesh/topology</DataItem>
-      </Topology>
-      <Geometry GeometryType="XYZ">
-        <DataItem Dimensions="3630 3" Format="HDF">idealized.h5:/MeshFunction/0/mesh/geometry</DataItem>
-      </Geometry>
-      <Attribute Name="subdomains" AttributeType="Scalar" Center="Cell">
-        <DataItem Dimensions="18067 1" Format="HDF">idealized.h5:/MeshFunction/0/values</DataItem>
-      </Attribute>
-    </Grid>
-  </Domain>
-</Xdmf>
+<Xdmf Version="3.0"><Domain><Grid Name="Grid"><Geometry GeometryType="XYZ"><DataItem DataType="Float" Dimensions="3302 3" Format="HDF" Precision="8">idealized.h5:/data0</DataItem></Geometry><Topology TopologyType="Tetrahedron" NumberOfElements="16300" NodesPerElement="4"><DataItem DataType="Int" Dimensions="16300 4" Format="HDF" Precision="4">idealized.h5:/data1</DataItem></Topology><Attribute Name="ftetwild_labels" AttributeType="Scalar" Center="Cell"><DataItem DataType="Float" Dimensions="16300" Format="HDF" Precision="8">idealized.h5:/data2</DataItem></Attribute><Attribute Name="labels" AttributeType="Scalar" Center="Cell"><DataItem DataType="Float" Dimensions="16300" Format="HDF" Precision="8">idealized.h5:/data3</DataItem></Attribute></Grid></Domain></Xdmf>
