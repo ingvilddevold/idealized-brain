@@ -3,6 +3,12 @@
 This repository contains command-line tools for generating, tagging, and iteratively refining idealized multi-domain 3D brain meshes for Biot-Stokes-type simulations in FEniCSx.
 The geometry corresponds to the one used in Chapter 4 of [*Mathematical Modelling of the Human Brain II: From Glymphatics to Deep Learning*](https://doi.org/10.1007/978-3-032-00679-0).
 
+
+<center><img src="img/idealized-brain.png" alt="idealized brain" width="200"/> </center>
+<center> Idealized brain surfaces </center>
+
+
+
 ## Requirements
 To install the required dependencies in a Conda environment, run
 ```bash
