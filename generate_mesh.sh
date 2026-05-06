@@ -1,1 +1,0 @@
-ftetwild --csg csg.json --output mesh/idealizedBrainMesh -e 0.002 -l 0.05 
