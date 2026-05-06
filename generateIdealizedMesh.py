@@ -240,7 +240,6 @@ def mesh(
     print("Exporting boundaries to XDMF...")
     boundariesfile = (output_dir / (output_dir.name + "_boundaries")).with_suffix(".xdmf")
     with XDMFFile(domain.comm, boundariesfile, "w") as f:
-        f.write_mesh(domain)
         f.write_meshtags(bm, domain.geometry)
 
     print(f"Number of cells: {domain.topology.index_map(tdim).size_local}")
