@@ -4,8 +4,8 @@ This repository contains command-line tools for generating, tagging, and iterati
 The geometry corresponds to the one used in Chapter 4 of [*Mathematical Modelling of the Human Brain II: From Glymphatics to Deep Learning*](https://doi.org/10.1007/978-3-032-00679-0).
 
 
-<center><img src="img/idealized-brain.png" alt="idealized brain" width="200"/> </center>
-<center> Idealized brain surfaces </center>
+<p align="center"><img src="img/idealized-brain.png" alt="idealized brain" width="200"/></p>
+<p align="center">Idealized brain surfaces</p>
 
 
 
@@ -58,10 +58,11 @@ After generating and refining the mesh, the directory structure will look simila
 .
 ├── mesh/
 │   ├── mesh.xdmf
-│   └── mesh_boundaries.xdmf
+│   └── mesh.h5
 ├── meshRef1/
 │   ├── meshRef1.xdmf
-│   └── meshRef1_boundaries.xdmf
+│   └── meshRef1.h5
+:
 ```
 
 ### FEniCSx Marker Reference
@@ -69,13 +70,24 @@ After generating and refining the mesh, the directory structure will look simila
 When loading the `.xdmf` files into FEniCSx, use the following integer IDs:
 
 #### Subdomains (Cells)
-| ID | Type | Description | Notes |
+
+We generate two sets of subdomain markers. The `subdomains` tag separate the porous and fluid domains:
+| ID | Type | Domain | Description |
 | :--- | :--- | :--- | :--- |
 | **`1`** | Subdomain | Porous | Parenchyma |
 | **`2`** | Subdomain | Fluid | Subarachnoid space and ventricles 
 
+The `subdomains_ftetwild` further separates the fluid space (for postprocessing purposes), as:
+| ID | Type | Domain | Description |
+| :--- | :--- | :--- | :--- |
+| **`1`** | Subdomain | Fluid | Subarachnoid space 
+| **`2`** | Subdomain | Porous | Parenchyma |
+| **`3`** | Subdomain | Fluid | Lateral ventricles (empty for idealized)
+| **`4`** | Subdomain | Fluid | Fourth ventricle
+| **`5`** | Subdomain | Fluid | Third ventricles
 
 #### Boundaries and interfaces (Facets)
+The `boundaries` facet tags contain:
 | ID | Type | Description | Notes |
 | :--- | :--- | :--- | :--- |
 | **`1`** | Boundary | Unified Tissue-CSF Interface | Default (if `--separate-interfaces` is not used) |
@@ -85,3 +97,19 @@ When loading the `.xdmf` files into FEniCSx, use the following integer IDs:
 | **`5`** | Boundary | Aqueduct | Internal interface for flow computation |
 | **`11`** | Boundary | Pia Membrane | Used if `--separate-interfaces` is set |
 | **`12`** | Boundary | Ependyma | Used if `--separate-interfaces` is set |
+
+To read the mesh and mesh tags into FEniCSx, use
+
+```python
+with dolfinx.io.XDMFFile(MPI.COMM_WORLD, meshfile, "r") as xdmf:
+    domain = xdmf.read_mesh()
+    ct1 = xdmf.read_meshtags(current_domain, name="subdomains")
+    ct2 = xdmf.read_meshtags(current_domain, name="subdomains_ftetwild")
+
+    # Create connectivity before reading facet tags
+    tdim = current_domain.topology.dim
+    fdim = tdim - 1
+    current_domain.topology.create_connectivity(fdim, tdim)
+
+    ft = xdmf.read_meshtags(current_domain, name="boundaries")
+```
