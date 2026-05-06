@@ -1,0 +1,14 @@
+name: fenicsxmesh
+channels:
+  - defaults
+  - conda-forge
+  - bioconda
+dependencies:
+  - fenics-dolfinx=0.10
+  - numpy
+  - pathlib
+  - pyvista
+  - typer
+  - pip
+  - pip:
+    - wildmeshing
