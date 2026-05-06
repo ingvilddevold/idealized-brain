@@ -1,16 +1,22 @@
 <?xml version="1.0"?>
 <!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
-<Xdmf Version="3.0" xmlns:xi="http://www.w3.org/2001/XInclude">
+<Xdmf Version="3.0" xmlns:xi="https://www.w3.org/2001/XInclude">
   <Domain>
     <Grid Name="mesh" GridType="Uniform">
-      <Topology NumberOfElements="33527" TopologyType="Triangle" NodesPerElement="3">
-        <DataItem Dimensions="33527 3" NumberType="UInt" Format="HDF">idealized_boundaries.h5:/MeshFunction/0/mesh/topology</DataItem>
+      <Topology TopologyType="Tetrahedron" NumberOfElements="16831" NodesPerElement="4">
+        <DataItem Dimensions="16831 4" NumberType="Int" Format="HDF">idealized_boundaries.h5:/Mesh/mesh/topology</DataItem>
       </Topology>
       <Geometry GeometryType="XYZ">
-        <DataItem Dimensions="3302 3" Format="HDF">idealized_boundaries.h5:/MeshFunction/0/mesh/geometry</DataItem>
+        <DataItem Dimensions="3398 3" Format="HDF">idealized_boundaries.h5:/Mesh/mesh/geometry</DataItem>
       </Geometry>
+    </Grid>
+    <Grid Name="f" GridType="Uniform">
+      <xi:include xpointer="xpointer(/Xdmf/Domain/Grid/Geometry)" />
+      <Topology TopologyType="Triangle" NumberOfElements="4197" NodesPerElement="3">
+        <DataItem Dimensions="4197 3" NumberType="Int" Format="HDF">idealized_boundaries.h5:/MeshTags/f/topology</DataItem>
+      </Topology>
       <Attribute Name="f" AttributeType="Scalar" Center="Cell">
-        <DataItem Dimensions="33527 1" Format="HDF">idealized_boundaries.h5:/MeshFunction/0/values</DataItem>
+        <DataItem Dimensions="4197 1" Format="HDF">idealized_boundaries.h5:/MeshTags/f/Values</DataItem>
       </Attribute>
     </Grid>
   </Domain>
