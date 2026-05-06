@@ -14,20 +14,20 @@ conda activate fenicsxmesh
 ```
 
 ## Tools
-### 1. Mesh Generation (generateIdealizedMesh.py)
+### 1. Mesh Generation (generateMesh.py)
 Generates surface STLs using Pyvista and creates a volumetric FEniCSx mesh from these using CSG (Constructive Solid Geometry), also generating properly tagged subdomains and boundaries.
 
 **Generate surface STLs:**
 
 ```bash
-python generateIdealizedMesh.py surfaces --output-dir surfaces
+python generateMesh.py surfaces --output-dir surfaces
 ```
 (Add `--show` to preview the geometry in a PyVista plot).
 
 **Generate and tag the FEniCSx mesh:**
 
 ```bash
-python generateIdealizedMesh.py mesh --stl-dir surfaces --output-dir mesh
+python generateMesh.py mesh --stl-dir surfaces --output-dir mesh
 ```
 (Add `--separate-interfaces` to tag the pial membrane and ventricular walls (ependyma) with distinct IDs instead of a unified interface tag).
 
