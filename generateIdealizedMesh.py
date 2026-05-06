@@ -139,7 +139,7 @@ def mesh(
 
     # 3. Create FEniCSx mesh
     print("Constructing FEniCSx mesh...")
-    mesh_obj = dolfinx.mesh.create_mesh(
+    domain = dolfinx.mesh.create_mesh(
         MPI.COMM_WORLD,
         cells=cell_array.astype(np.int64),
         x=point_array,
@@ -159,25 +159,25 @@ def mesh(
             mesh, mesh.topology.dim, adj, local_values.astype(np.int32, copy=False)
         )
 
-    ct = create_cell_tags(mesh_obj, subdomains)
-    ct2 = create_cell_tags(mesh_obj, labels)
+    ct = create_cell_tags(domain, subdomains)
+    ct2 = create_cell_tags(domain, labels)
 
-    with XDMFFile(mesh_obj.comm, output_dir / "idealized.xdmf", "w") as xdmf:
-        xdmf.write_mesh(mesh_obj)
-        xdmf.write_meshtags(ct, mesh_obj.geometry)
+    with XDMFFile(domain.comm, output_dir / "idealized.xdmf", "w") as xdmf:
+        xdmf.write_mesh(domain)
+        xdmf.write_meshtags(ct, domain.geometry)
 
     # 4. Boundary and interface marking
     print("Marking boundaries and interfaces...")
-    tdim = mesh_obj.topology.dim
+    tdim = domain.topology.dim
     fdim = tdim - 1
-    mesh_obj.topology.create_entities(fdim)
+    domain.topology.create_entities(fdim)
 
-    num_facets = mesh_obj.topology.index_map(fdim).size_local
+    num_facets = domain.topology.index_map(fdim).size_local
     marker_values = np.zeros(num_facets, dtype=np.int32)
 
     def get_internal_interface_facets(cell_tags, doms=None):
-        mesh_obj.topology.create_connectivity(fdim, tdim)
-        f_to_c = mesh_obj.topology.connectivity(fdim, tdim)
+        domain.topology.create_connectivity(fdim, tdim)
+        f_to_c = domain.topology.connectivity(fdim, tdim)
         internal_facets = []
         for f in range(num_facets):
             cells = f_to_c.links(f)
@@ -188,9 +188,9 @@ def mesh(
         return np.array(internal_facets, dtype=np.int32)
 
     def get_external_boundary_facets(cell_tags, subdomain_ids):
-        mesh_obj.topology.create_connectivity(fdim, tdim)
-        f_to_c = mesh_obj.topology.connectivity(fdim, tdim)
-        boundary_facets = dolfinx.mesh.exterior_facet_indices(mesh_obj.topology)
+        domain.topology.create_connectivity(fdim, tdim)
+        f_to_c = domain.topology.connectivity(fdim, tdim)
+        boundary_facets = dolfinx.mesh.exterior_facet_indices(domain.topology)
         target_facets = []
         for f in boundary_facets:
             c = f_to_c.links(f)[0]
@@ -201,10 +201,10 @@ def mesh(
     # Calculate facets
     aqueduct_v4_facets = get_internal_interface_facets(ct2, doms=[4, 5])
 
-    z_min = np.min(mesh_obj.geometry.x[:, 2])
-    outer_facets = dolfinx.mesh.exterior_facet_indices(mesh_obj.topology)
+    z_min = np.min(domain.geometry.x[:, 2])
+    outer_facets = dolfinx.mesh.exterior_facet_indices(domain.topology)
     bottom_facets = dolfinx.mesh.locate_entities_boundary(
-        mesh_obj, fdim, lambda x: np.isclose(x[2], z_min, atol=0.001)
+        domain, fdim, lambda x: np.isclose(x[2], z_min, atol=0.001)
     )
     spinal_cord_facets = get_external_boundary_facets(ct, [POROUS_ID])
 
@@ -233,15 +233,16 @@ def mesh(
     tagged_indices = np.where(marker_values != 0)[0].astype(np.int32)
     tagged_values = marker_values[tagged_indices]
 
-    bm = dolfinx.mesh.meshtags(mesh_obj, fdim, tagged_indices, tagged_values)
+    bm = dolfinx.mesh.meshtags(domain, fdim, tagged_indices, tagged_values)
 
     # 5. Export boundaries to XDMF
     print("Exporting boundaries to XDMF...")
-    with XDMFFile(mesh_obj.comm, output_dir / "idealized_boundaries.xdmf", "w") as f:
-        f.write_mesh(mesh_obj)
+    with XDMFFile(domain.comm, output_dir / "idealized_boundaries.xdmf", "w") as f:
+        f.write_mesh(domain)
         bm.name = "f"
-        f.write_meshtags(bm, mesh_obj.geometry)
+        f.write_meshtags(bm, domain.geometry)
 
+    print(f"Number of cells: {domain.topology.index_map(tdim).size_local}")
     print(f"Process complete. Mesh written to {output_dir}.")
 
 
