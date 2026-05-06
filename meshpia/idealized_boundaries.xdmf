@@ -3,20 +3,20 @@
 <Xdmf Version="3.0" xmlns:xi="https://www.w3.org/2001/XInclude">
   <Domain>
     <Grid Name="mesh" GridType="Uniform">
-      <Topology TopologyType="Tetrahedron" NumberOfElements="18844" NodesPerElement="4">
-        <DataItem Dimensions="18844 4" NumberType="Int" Format="HDF">idealized_boundaries.h5:/Mesh/mesh/topology</DataItem>
+      <Topology TopologyType="Tetrahedron" NumberOfElements="16644" NodesPerElement="4">
+        <DataItem Dimensions="16644 4" NumberType="Int" Format="HDF">idealized_boundaries.h5:/Mesh/mesh/topology</DataItem>
       </Topology>
       <Geometry GeometryType="XYZ">
-        <DataItem Dimensions="3784 3" Format="HDF">idealized_boundaries.h5:/Mesh/mesh/geometry</DataItem>
+        <DataItem Dimensions="3354 3" Format="HDF">idealized_boundaries.h5:/Mesh/mesh/geometry</DataItem>
       </Geometry>
     </Grid>
-    <Grid Name="f" GridType="Uniform">
+    <Grid Name="mesh_tags" GridType="Uniform">
       <xi:include xpointer="xpointer(/Xdmf/Domain/Grid/Geometry)" />
-      <Topology TopologyType="Triangle" NumberOfElements="4411" NodesPerElement="3">
-        <DataItem Dimensions="4411 3" NumberType="Int" Format="HDF">idealized_boundaries.h5:/MeshTags/f/topology</DataItem>
+      <Topology TopologyType="Triangle" NumberOfElements="4128" NodesPerElement="3">
+        <DataItem Dimensions="4128 3" NumberType="Int" Format="HDF">idealized_boundaries.h5:/MeshTags/mesh_tags/topology</DataItem>
       </Topology>
-      <Attribute Name="f" AttributeType="Scalar" Center="Cell">
-        <DataItem Dimensions="4411 1" Format="HDF">idealized_boundaries.h5:/MeshTags/f/Values</DataItem>
+      <Attribute Name="mesh_tags" AttributeType="Scalar" Center="Cell">
+        <DataItem Dimensions="4128 1" Format="HDF">idealized_boundaries.h5:/MeshTags/mesh_tags/Values</DataItem>
       </Attribute>
     </Grid>
   </Domain>
