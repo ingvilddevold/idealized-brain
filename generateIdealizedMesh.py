@@ -33,7 +33,7 @@ def surfaces(
     """Generates the surface STLs required for the CSG tree."""
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    typer.echo("Generating surface meshes...")
+    print("Generating surface meshes...")
     skull = pv.Sphere(radius=0.08)
     parenchyma = pv.Sphere(radius=0.07)
     ventricle = pv.Sphere(radius=0.02)
@@ -48,7 +48,7 @@ def surfaces(
     ).triangulate()
 
     if show_plot:
-        typer.echo("Opening PyVista plot window...")
+        print("Opening PyVista plot window...")
         pl = pv.Plotter()
         pl.add_mesh(parenchyma, opacity=0.6, color="blue")
         pl.add_mesh(ventricle, color="red")
@@ -59,19 +59,19 @@ def surfaces(
         pl.background_color = "white"
         pl.show()
 
-    typer.echo(f"Saving STLs to {output_dir}...")
+    print(f"Saving STLs to {output_dir}...")
     parenchyma.save(output_dir / "parenchyma.stl")
     skull.save(output_dir / "skull.stl")
     cord.save(output_dir / "cord.stl")
     canal.save(output_dir / "canal.stl")
     ventricle.save(output_dir / "ventricle.stl")
     aqueduct.save(output_dir / "aqueduct.stl")
-    typer.echo("Surfaces generated successfully.")
+    print("Surfaces generated successfully.")
 
 
 @app.command()
 def mesh(
-    stl_dir: Path = typer.Option(Path("stls"), help="Directory containing input STLs."),
+    stl_dir: Path = typer.Option(Path("surfaces"), help="Directory containing input STLs."),
     output_dir: Path = typer.Option(
         Path("mesh_out"), help="Directory to save FEniCSx XDMF files."
     ),
@@ -92,7 +92,7 @@ def mesh(
     output_dir.mkdir(exist_ok=True, parents=True)
 
     # 1. Volumetric meshing with fTetWild
-    typer.echo("Tetrahedralizing CSG tree with fTetWild...")
+    print("Tetrahedralizing CSG tree with fTetWild...")
     tetra = wm.Tetrahedralizer(epsilon=0.002, edge_length_r=0.05, coarsen=False)
 
     csg_dict = {
@@ -122,7 +122,7 @@ def mesh(
     point_array, cell_array, marker = tetra.get_tet_mesh()
 
     # 2. Re-map fTetWild markers
-    typer.echo("Mapping subdomains...")
+    print("Mapping subdomains...")
     subdomains = np.copy(marker)
     subdomains[np.isin(marker, [1, 2])] = 1
     subdomains[np.isin(marker, [3, 4])] = 2  # parenchyma parts
@@ -136,7 +136,7 @@ def mesh(
     subdomains[np.isin(subdomains, [100])] = POROUS_ID
 
     # 3. Create FEniCSx mesh
-    typer.echo("Constructing FEniCSx mesh...")
+    print("Constructing FEniCSx mesh...")
     mesh_obj = dolfinx.mesh.create_mesh(
         MPI.COMM_WORLD,
         cells=cell_array.astype(np.int64),
@@ -165,7 +165,7 @@ def mesh(
         xdmf.write_meshtags(ct, mesh_obj.geometry)
 
     # 4. Boundary and interface marking
-    typer.echo("Marking boundaries and interfaces...")
+    print("Marking boundaries and interfaces...")
     tdim = mesh_obj.topology.dim
     fdim = tdim - 1
     mesh_obj.topology.create_entities(fdim)
@@ -208,7 +208,7 @@ def mesh(
 
     # Either tag a single interface (1) or ependyma (11) and pia (12) separately
     if separate_interfaces:
-        typer.echo("Using separate tags for Pia (11) and Ependyma (12)...")
+        print("Using separate tags for Pia (11) and Ependyma (12)...")
         pia_facets = get_internal_interface_facets(ct2, doms=[1, 2])
         ependyma_facets_1 = get_internal_interface_facets(ct2, doms=[2, 4])
         ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 5])
@@ -217,7 +217,7 @@ def mesh(
         marker_values[pia_facets] = PIA_ID
         marker_values[ependyma_facets] = EPENDYMA_ID
     else:
-        typer.echo("Using unified interface tag (1)...")
+        print("Using unified interface tag (1)...")
         tissue_csf_facets = get_internal_interface_facets(ct, doms=[1, 2])
         marker_values[tissue_csf_facets] = INTERFACE_ID
 
@@ -234,13 +234,13 @@ def mesh(
     bm = dolfinx.mesh.meshtags(mesh_obj, fdim, tagged_indices, tagged_values)
 
     # 5. Export boundaries to XDMF
-    typer.echo("Exporting boundaries to XDMF...")
+    print("Exporting boundaries to XDMF...")
     with XDMFFile(mesh_obj.comm, output_dir / "idealized_boundaries.xdmf", "w") as f:
         f.write_mesh(mesh_obj)
         bm.name = "f"
         f.write_meshtags(bm, mesh_obj.geometry)
 
-    typer.echo("Process complete.")
+    print(f"Process complete. Mesh written to {output_dir}.")
 
 
 if __name__ == "__main__":
