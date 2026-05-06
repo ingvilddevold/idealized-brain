@@ -71,7 +71,9 @@ def surfaces(
 
 @app.command()
 def mesh(
-    stl_dir: Path = typer.Option(Path("surfaces"), help="Directory containing input STLs."),
+    stl_dir: Path = typer.Option(
+        Path("surfaces"), help="Directory containing input STLs."
+    ),
     output_dir: Path = typer.Option(
         Path("mesh_out"), help="Directory to save FEniCSx XDMF files."
     ),
