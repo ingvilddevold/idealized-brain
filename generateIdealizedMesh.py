@@ -162,7 +162,8 @@ def mesh(
     ct = create_cell_tags(domain, subdomains)
     ct2 = create_cell_tags(domain, labels)
 
-    with XDMFFile(domain.comm, output_dir / "idealized.xdmf", "w") as xdmf:
+    meshfile = (output_dir / output_dir.name).with_suffix(".xdmf")
+    with XDMFFile(domain.comm, meshfile, "w") as xdmf:
         xdmf.write_mesh(domain)
         xdmf.write_meshtags(ct, domain.geometry)
 
@@ -237,9 +238,9 @@ def mesh(
 
     # 5. Export boundaries to XDMF
     print("Exporting boundaries to XDMF...")
-    with XDMFFile(domain.comm, output_dir / "idealized_boundaries.xdmf", "w") as f:
+    boundariesfile = (output_dir / (output_dir.name + "_boundaries")).with_suffix(".xdmf")
+    with XDMFFile(domain.comm, boundariesfile, "w") as f:
         f.write_mesh(domain)
-        bm.name = "f"
         f.write_meshtags(bm, domain.geometry)
 
     print(f"Number of cells: {domain.topology.index_map(tdim).size_local}")
