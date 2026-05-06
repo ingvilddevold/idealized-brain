@@ -162,11 +162,6 @@ def mesh(
     ct = create_cell_tags(domain, subdomains)
     ct2 = create_cell_tags(domain, labels)
 
-    meshfile = (output_dir / output_dir.name).with_suffix(".xdmf")
-    with XDMFFile(domain.comm, meshfile, "w") as xdmf:
-        xdmf.write_mesh(domain)
-        xdmf.write_meshtags(ct, domain.geometry)
-
     # 4. Boundary and interface marking
     print("Marking boundaries and interfaces...")
     tdim = domain.topology.dim
@@ -236,14 +231,24 @@ def mesh(
 
     bm = dolfinx.mesh.meshtags(domain, fdim, tagged_indices, tagged_values)
 
-    # 5. Export boundaries to XDMF
-    print("Exporting boundaries to XDMF...")
-    boundariesfile = (output_dir / (output_dir.name + "_boundaries")).with_suffix(".xdmf")
-    with XDMFFile(domain.comm, boundariesfile, "w") as f:
-        f.write_meshtags(bm, domain.geometry)
+    # 5. Export mesh to XDMF
+    print("Exporting mesh and mesh tags to XDMF...")
+
+    # Rename mesh tags
+    bm.name = "boundaries"
+    ct.name = "subdomains"
+    ct2.name = "subdomains_ftetwild"
+
+    meshfile = (output_dir / output_dir.name).with_suffix(".xdmf")
+
+    with XDMFFile(domain.comm, meshfile, "w") as xdmf:
+        xdmf.write_mesh(domain)
+        xdmf.write_meshtags(ct, domain.geometry)
+        xdmf.write_meshtags(ct2, domain.geometry)
+        xdmf.write_meshtags(bm, domain.geometry)
 
     print(f"Number of cells: {domain.topology.index_map(tdim).size_local}")
-    print(f"Process complete. Mesh written to {output_dir}.")
+    print(f"Process complete. Mesh written to {output_dir.absolute()}.")
 
 
 if __name__ == "__main__":

@@ -33,37 +33,33 @@ def refine(
     and exports them to new folders for each refinement level.
     """
     meshfile = (input_dir / input_dir.name).with_suffix(".xdmf")
-    boundariesfile = (input_dir / (input_dir.name + "_boundaries")).with_suffix(".xdmf")
     configfile = input_dir / "config.yml"
 
-    if not meshfile.exists() or not boundariesfile.exists():
-        typer.secho(
-            f"Error: Could not find {meshfile} or {boundariesfile}", fg=typer.colors.RED
-        )
+    if not meshfile.exists():
+        typer.secho(f"Error: Could not find {meshfile}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
     typer.echo(f"Loading initial mesh from {input_dir}...")
 
-    # 1. Read the mesh and cell (subdomain) tags
+    # 1. Read the mesh and mesh tags
     with dolfinx.io.XDMFFile(MPI.COMM_WORLD, meshfile, "r") as xdmf:
         current_domain = xdmf.read_mesh()
-        current_subdomains = xdmf.read_meshtags(
-            current_domain, name="mesh_tags", attribute_name="mesh_tags"
-        )
+        current_subdomains = xdmf.read_meshtags(current_domain, name="subdomains")
+        current_subdomains2 = xdmf.read_meshtags(current_domain, name="subdomains_ftetwild")
 
-    tdim = current_domain.topology.dim
-    fdim = tdim - 1
-    current_domain.topology.create_connectivity(fdim, tdim)
-    current_domain.topology.create_entities(1)
+        # Create connectivity before reading facet tags
+        tdim = current_domain.topology.dim
+        fdim = tdim - 1
+        current_domain.topology.create_connectivity(fdim, tdim)
 
-    # 2. Read the facet (boundary) tags
-    with dolfinx.io.XDMFFile(MPI.COMM_WORLD, boundariesfile, "r") as xdmf:
-        current_boundaries = xdmf.read_meshtags(current_domain, name="mesh_tags")
+        current_boundaries = xdmf.read_meshtags(current_domain, name="boundaries")
 
     num_cells = current_domain.topology.index_map(tdim).size_local
     typer.echo(f"Num cells before refinement: {num_cells}")
 
     # 3. Iterative refinement
+    current_domain.topology.create_entities(1)
+
     for i in range(1, levels + 1):
         typer.echo(f"\n--- Starting Refinement Level {i} ---")
 
@@ -80,8 +76,11 @@ def refine(
         subdomains_ref = dolfinx.mesh.transfer_meshtag(
             current_subdomains, domain_ref, parent_cell_ref, parent_facet_ref
         )
+        subdomains_ref2 = dolfinx.mesh.transfer_meshtag(
+            current_subdomains2, domain_ref, parent_cell_ref, parent_facet_ref
+        )
         boundaries_ref = dolfinx.mesh.transfer_meshtag(
-            current_boundaries, domain_ref, parent_cell_ref, parent_facet_ref
+            current_boundaries, domain_ref, parent_cell_ref, parent_facet_ref,
         )
 
         # Set up output directory
@@ -90,29 +89,30 @@ def refine(
         out_dir.mkdir(exist_ok=True, parents=True)
 
         # Export meshes
+        subdomains_ref.name = "subdomains"
+        subdomains_ref2.name = "subdomains_ftetwild"
+        boundaries_ref.name = "boundaries"
+
         typer.echo(f"Writing data to {out_dir}...")
         with dolfinx.io.XDMFFile(
             MPI.COMM_WORLD, out_dir / f"{out_name}.xdmf", "w"
         ) as xdmf:
             xdmf.write_mesh(domain_ref)
             xdmf.write_meshtags(subdomains_ref, domain_ref.geometry)
-
-        with dolfinx.io.XDMFFile(
-            MPI.COMM_WORLD, out_dir / f"{out_name}_boundaries.xdmf", "w"
-        ) as xdmf:
+            xdmf.write_meshtags(subdomains_ref2, domain_ref.geometry)
             xdmf.write_meshtags(boundaries_ref, domain_ref.geometry)
 
         # Copy config if requested and it exists
         if copy_config and configfile.exists():
             shutil.copyfile(configfile, out_dir / "config.yml")
 
-        # Report stats
         new_num_cells = domain_ref.topology.index_map(tdim).size_local
         typer.echo(f"Num cells after refinement {i}: {new_num_cells}")
 
         # Overwrite current variables to prepare for the next iteration
         current_domain = domain_ref
         current_subdomains = subdomains_ref
+        current_subdomains2 = subdomains_ref2
         current_boundaries = boundaries_ref
 
     typer.secho("\nAll refinements completed successfully.", fg=typer.colors.GREEN)
