@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
+<Xdmf Version="3.0" xmlns:xi="https://www.w3.org/2001/XInclude">
+  <Domain>
+    <Grid Name="mesh" GridType="Uniform">
+      <Topology TopologyType="Tetrahedron" NumberOfElements="19143" NodesPerElement="4">
+        <DataItem Dimensions="19143 4" NumberType="Int" Format="HDF">idealizedpia.h5:/Mesh/mesh/topology</DataItem>
+      </Topology>
+      <Geometry GeometryType="XYZ">
+        <DataItem Dimensions="3829 3" Format="HDF">idealizedpia.h5:/Mesh/mesh/geometry</DataItem>
+      </Geometry>
+    </Grid>
+    <Grid Name="subdomains" GridType="Uniform">
+      <xi:include xpointer="xpointer(/Xdmf/Domain/Grid/Geometry)" />
+      <Topology TopologyType="Tetrahedron" NumberOfElements="19143" NodesPerElement="4">
+        <DataItem Dimensions="19143 4" NumberType="Int" Format="HDF">idealizedpia.h5:/MeshTags/subdomains/topology</DataItem>
+      </Topology>
+      <Attribute Name="subdomains" AttributeType="Scalar" Center="Cell">
+        <DataItem Dimensions="19143 1" Format="HDF">idealizedpia.h5:/MeshTags/subdomains/Values</DataItem>
+      </Attribute>
+    </Grid>
+    <Grid Name="subdomains_ftetwild" GridType="Uniform">
+      <xi:include xpointer="xpointer(/Xdmf/Domain/Grid/Geometry)" />
+      <Topology TopologyType="Tetrahedron" NumberOfElements="19143" NodesPerElement="4">
+        <DataItem Dimensions="19143 4" NumberType="Int" Format="HDF">idealizedpia.h5:/MeshTags/subdomains_ftetwild/topology</DataItem>
+      </Topology>
+      <Attribute Name="subdomains_ftetwild" AttributeType="Scalar" Center="Cell">
+        <DataItem Dimensions="19143 1" Format="HDF">idealizedpia.h5:/MeshTags/subdomains_ftetwild/Values</DataItem>
+      </Attribute>
+    </Grid>
+    <Grid Name="boundaries" GridType="Uniform">
+      <xi:include xpointer="xpointer(/Xdmf/Domain/Grid/Geometry)" />
+      <Topology TopologyType="Triangle" NumberOfElements="4420" NodesPerElement="3">
+        <DataItem Dimensions="4420 3" NumberType="Int" Format="HDF">idealizedpia.h5:/MeshTags/boundaries/topology</DataItem>
+      </Topology>
+      <Attribute Name="boundaries" AttributeType="Scalar" Center="Cell">
+        <DataItem Dimensions="4420 1" Format="HDF">idealizedpia.h5:/MeshTags/boundaries/Values</DataItem>
+      </Attribute>
+    </Grid>
+  </Domain>
+</Xdmf>

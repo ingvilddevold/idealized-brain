@@ -1,0 +1,34 @@
+subdomains:
+  porous: 1
+  fluid: 2
+
+regions:
+  fluid:
+    csf: 1
+    lv: 3
+    v4: 4
+    v3: 5
+  porous:
+    parenchyma: 2
+
+boundaries:
+  rigid_skull: 2
+  spinal_outlet: 3
+  fixed_stem: 4
+  aqueduct: 5
+
+interfaces:
+  pia: 11
+  ependyma: 12
+
+probes:
+  parenchyma:
+    top_parenchyma: [-1.98036e-05, 7.76609e-05, 0.0653155]
+  sas:
+    top_sas:
+      [-1.9803643226623535e-05, 0.0020221995655447245, 0.07735125720500946]
+  ventricular_system:
+    fourth_ventricle:
+      [-1.9803643226623535e-05, 0.0343729667365551, -0.034636080265045166]
+    lateral_ventricles:
+      [-1.9803643226623535e-05, -0.0012879502028226852, 0.001128169591538608]
