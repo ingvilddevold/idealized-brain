@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 
 import numpy as np
-import typer
 import pyvista as pv
+import typer
 
 app = typer.Typer(help="CLI for generating idealized brain meshes and FEniCSx tags.")
 
@@ -43,8 +43,24 @@ def surfaces(
     cord = pv.Cylinder(
         center=(0, 0, -0.105), direction=(0, 0, -1), radius=0.017, height=0.08
     ).triangulate()
-    aqueduct = pv.Cylinder(
-        center=(0, 0.03, -0.03), direction=(0, 1, -1), radius=0.004, height=0.06
+
+    orig_center = np.array([0.0, 0.03, -0.03])
+    direction = np.array([0.0, 1.0, -1.0])
+    direction_norm = direction / np.linalg.norm(direction)
+    shift = 0.015 * direction_norm
+
+    aqueduct_v3 = pv.Cylinder(
+        center=(orig_center + shift).tolist(),
+        direction=direction.tolist(),
+        radius=0.004,
+        height=0.03,
+    ).triangulate()
+
+    aqueduct_v4 = pv.Cylinder(
+        center=(orig_center - shift).tolist(),
+        direction=direction.tolist(),
+        radius=0.004,
+        height=0.03,
     ).triangulate()
 
     if show_plot:
@@ -52,7 +68,8 @@ def surfaces(
         pl = pv.Plotter()
         pl.add_mesh(parenchyma, opacity=0.6, color="blue")
         pl.add_mesh(ventricle, color="red")
-        pl.add_mesh(aqueduct, opacity=0.7, color="red")
+        pl.add_mesh(aqueduct_v3, opacity=0.8, color="orange")
+        pl.add_mesh(aqueduct_v4, opacity=0.8, color="red")
         pl.add_mesh(skull, opacity=0.2)
         pl.add_mesh(canal, opacity=0.2)
         pl.add_mesh(cord, opacity=0.7, color="blue")
@@ -65,7 +82,8 @@ def surfaces(
     cord.save(output_dir / "cord.stl")
     canal.save(output_dir / "canal.stl")
     ventricle.save(output_dir / "ventricle.stl")
-    aqueduct.save(output_dir / "aqueduct.stl")
+    aqueduct_v3.save(output_dir / "aqueduct_v3.stl")
+    aqueduct_v4.save(output_dir / "aqueduct_v4.stl")
     print("Surfaces generated successfully.")
 
 
@@ -108,7 +126,11 @@ def mesh(
             },
             "right": {
                 "operation": "union",
-                "left": str(stl_dir / "aqueduct.stl"),
+                "left": {
+                    "operation": "union",
+                    "left": str(stl_dir / "aqueduct_v3.stl"),
+                    "right": str(stl_dir / "aqueduct_v4.stl"),
+                },
                 "right": str(stl_dir / "ventricle.stl"),
             },
         },
@@ -119,22 +141,41 @@ def mesh(
         },
     }
 
+    def extract_paths(d):
+        paths = []
+        for key, value in d.items():
+            if isinstance(value, dict):
+                paths.extend(extract_paths(value))
+            elif isinstance(value, str) and value.endswith(".stl"):
+                paths.append(Path(value))
+        return paths
+
+    missing_files = [f for f in extract_paths(csg_dict) if not f.exists()]
+    if missing_files:
+        raise FileNotFoundError(
+            f"Missing required STLs: {missing_files}. Run 'surfaces' first."
+        )
+
     tetra.load_csg_tree(json.dumps(csg_dict))
     tetra.tetrahedralize()
     point_array, cell_array, marker = tetra.get_tet_mesh()
 
     # 2. Re-map fTetWild markers
-    print("Mapping subdomains...")
-    subdomains = np.copy(marker)
-    subdomains[np.isin(marker, [1, 2])] = 1
-    subdomains[np.isin(marker, [3, 4])] = 2  # parenchyma parts
-    subdomains[np.isin(marker, [5])] = 4
-    subdomains[np.isin(marker, [6])] = 5
+    print("Mapping subdomains via original np.isin logic...")
+    raw_markers = np.copy(marker).flatten()
+    subdomains = np.copy(raw_markers)
 
-    labels = np.copy(subdomains)  # ftetwild labels 1-5
+    subdomains[np.isin(raw_markers, [1, 2])] = 1
+    subdomains[np.isin(raw_markers, [3, 4])] = 2  # parenchyma parts
+
+    subdomains[np.isin(raw_markers, [5])] = 4  # V4
+    subdomains[np.isin(raw_markers, [6])] = 5  # V3
+    subdomains[np.isin(raw_markers, [7])] = 6  # LV
+
+    labels = np.copy(subdomains)  # ftetwild labels 1-6
 
     subdomains[np.isin(subdomains, [2])] = 100  # tmp to avoid conflict
-    subdomains[np.isin(subdomains, [1, 3, 4, 5])] = FLUID_ID
+    subdomains[np.isin(subdomains, [1, 4, 5, 6])] = FLUID_ID
     subdomains[np.isin(subdomains, [100])] = POROUS_ID
 
     # 3. Create FEniCSx mesh
@@ -152,7 +193,7 @@ def mesh(
             mesh,
             mesh.topology.dim,
             cell_array.astype(np.int64),
-            values_array.flatten().astype(np.int32),
+            values_array.astype(np.int32),
         )
         adj = dolfinx.graph.adjacencylist(local_entities)
         return dolfinx.mesh.meshtags_from_entities(
@@ -194,8 +235,8 @@ def mesh(
                 target_facets.append(f)
         return np.array(target_facets, dtype=np.int32)
 
-    # Calculate facets
-    aqueduct_v4_facets = get_internal_interface_facets(ct2, doms=[4, 5])
+    # Define aqueduct as interface between V4 and V3
+    aqueduct_facets = get_internal_interface_facets(ct2, doms=[4, 5])
 
     z_min = np.min(domain.geometry.x[:, 2])
     outer_facets = dolfinx.mesh.exterior_facet_indices(domain.topology)
@@ -210,7 +251,10 @@ def mesh(
         pia_facets = get_internal_interface_facets(ct2, doms=[1, 2])
         ependyma_facets_1 = get_internal_interface_facets(ct2, doms=[2, 4])
         ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 5])
-        ependyma_facets = np.append(ependyma_facets_1, ependyma_facets_2)
+        ependyma_facets_3 = get_internal_interface_facets(ct2, doms=[2, 6])
+        ependyma_facets = np.concatenate(
+            [ependyma_facets_1, ependyma_facets_2, ependyma_facets_3]
+        )
 
         marker_values[pia_facets] = PIA_ID
         marker_values[ependyma_facets] = EPENDYMA_ID
@@ -220,7 +264,7 @@ def mesh(
         marker_values[tissue_csf_facets] = INTERFACE_ID
 
     # Apply common markers
-    marker_values[aqueduct_v4_facets] = AQUEDUCT_ID
+    marker_values[aqueduct_facets] = AQUEDUCT_ID
     marker_values[outer_facets] = SKULL_ID
     marker_values[bottom_facets] = SPINAL_CANAL_ID
     marker_values[spinal_cord_facets] = SPINAL_CORD_ID
