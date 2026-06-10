@@ -33,8 +33,10 @@ python generateMesh.py surfaces --output-dir surfaces
 **Generate and tag the FEniCSx mesh:**
 
 ```bash
-python generateMesh.py mesh --stl-dir surfaces --output-dir mesh
+python generateMesh.py mesh --stl-dir surfaces --name meshname
 ```
+This writes the mesh to `meshname/meshname.xdmf`.
+
 (Add `--separate-interfaces` to tag the pial membrane and ventricular walls (ependyma) with distinct IDs instead of a unified interface tag).
 
 Note: It is also possible to generate the mesh from the surface STLs with fTetWild directly from command line as
@@ -56,12 +58,16 @@ This will read the base mesh and sequentially generate `Ref1`, `Ref2`, etc., in 
 After generating and refining the mesh, the directory structure will look similar to this:
 ```plaintext
 .
-├── mesh/
-│   ├── mesh.xdmf
-│   └── mesh.h5
-├── meshRef1/
-│   ├── meshRef1.xdmf
-│   └── meshRef1.h5
+├── meshes
+│   ├── idealized
+│   │   ├── config.yml
+│   │   ├── idealized.h5
+│   │   └── idealized.xdmf
+│   ├── idealizedRef1
+│   │   ├── config.yml
+│   │   ├── idealizedRef1.h5
+│   │   └── idealizedRef1.xdmf
+│   :
 :
 ```
 
