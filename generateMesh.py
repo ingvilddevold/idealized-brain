@@ -92,8 +92,8 @@ def mesh(
     stl_dir: Path = typer.Option(
         Path("surfaces"), help="Directory containing input STLs."
     ),
-    output_dir: Path = typer.Option(
-        Path("mesh_out"), help="Directory to save FEniCSx XDMF files."
+    name: Path = typer.Option(
+        Path("mesh_out"), help="Name for saved FEniCSx XDMF files."
     ),
     separate_interfaces: bool = typer.Option(
         False,
@@ -109,6 +109,7 @@ def mesh(
     from mpi4py import MPI
     from dolfinx.io import XDMFFile
 
+    output_dir = Path("meshes") / name
     output_dir.mkdir(exist_ok=True, parents=True)
 
     # 1. Volumetric meshing with fTetWild
@@ -283,7 +284,7 @@ def mesh(
     ct.name = "subdomains"
     ct2.name = "subdomains_ftetwild"
 
-    meshfile = (output_dir / output_dir.name).with_suffix(".xdmf")
+    meshfile = (output_dir / name).with_suffix(".xdmf")
 
     with XDMFFile(domain.comm, meshfile, "w") as xdmf:
         xdmf.write_mesh(domain)
