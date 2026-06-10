@@ -17,10 +17,6 @@ def refine(
         help="Directory containing the unrefined mesh files (e.g., meshes/idealized).",
         prompt="Path to input mesh directory",
     ),
-    mesh_basename: str = typer.Option(
-        "idealized",
-        help="Base name of the mesh files (e.g., 'idealized' expects 'idealized.xdmf').",
-    ),
     levels: int = typer.Option(
         2, help="Number of times to iteratively refine the mesh."
     ),
@@ -32,20 +28,23 @@ def refine(
     Reads an XDMF mesh and its boundary/subdomain tags, refines them,
     and exports them to new folders for each refinement level.
     """
-    meshfile = (input_dir / input_dir.name).with_suffix(".xdmf")
-    configfile = input_dir / "config.yml"
+    mesh_file = (input_dir / input_dir.name).with_suffix(".xdmf")
+    mesh_basename = mesh_file.stem
+    config_file = input_dir / "config.yml"
 
-    if not meshfile.exists():
-        typer.secho(f"Error: Could not find {meshfile}", fg=typer.colors.RED)
+    if not mesh_file.exists():
+        typer.secho(f"Error: Could not find {mesh_file}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
     typer.echo(f"Loading initial mesh from {input_dir}...")
 
-    # 1. Read the mesh and mesh tags
-    with dolfinx.io.XDMFFile(MPI.COMM_WORLD, meshfile, "r") as xdmf:
+    # Read the mesh and mesh tags
+    with dolfinx.io.XDMFFile(MPI.COMM_WORLD, mesh_file, "r") as xdmf:
         current_domain = xdmf.read_mesh()
         current_subdomains = xdmf.read_meshtags(current_domain, name="subdomains")
-        current_subdomains2 = xdmf.read_meshtags(current_domain, name="subdomains_ftetwild")
+        current_subdomains2 = xdmf.read_meshtags(
+            current_domain, name="subdomains_ftetwild"
+        )
 
         # Create connectivity before reading facet tags
         tdim = current_domain.topology.dim
@@ -57,7 +56,7 @@ def refine(
     num_cells = current_domain.topology.index_map(tdim).size_local
     typer.echo(f"Num cells before refinement: {num_cells}")
 
-    # 3. Iterative refinement
+    # Iterative refinement
     current_domain.topology.create_entities(1)
 
     for i in range(1, levels + 1):
@@ -80,7 +79,10 @@ def refine(
             current_subdomains2, domain_ref, parent_cell_ref, parent_facet_ref
         )
         boundaries_ref = dolfinx.mesh.transfer_meshtag(
-            current_boundaries, domain_ref, parent_cell_ref, parent_facet_ref,
+            current_boundaries,
+            domain_ref,
+            parent_cell_ref,
+            parent_facet_ref,
         )
 
         # Set up output directory
@@ -103,8 +105,8 @@ def refine(
             xdmf.write_meshtags(boundaries_ref, domain_ref.geometry)
 
         # Copy config if requested and it exists
-        if copy_config and configfile.exists():
-            shutil.copyfile(configfile, out_dir / "config.yml")
+        if copy_config and config_file.exists():
+            shutil.copyfile(config_file, out_dir / "config.yml")
 
         new_num_cells = domain_ref.topology.index_map(tdim).size_local
         typer.echo(f"Num cells after refinement {i}: {new_num_cells}")
