@@ -15,6 +15,7 @@ FLUID_ID = 2
 INTERFACE_ID = 1
 PIA_ID = 11
 EPENDYMA_ID = 12
+SV_ID = 13
 SKULL_ID = 2
 SPINAL_CANAL_ID = 3
 SPINAL_CORD_ID = 4
@@ -49,14 +50,15 @@ def surfaces(
     direction_norm = direction / np.linalg.norm(direction)
     shift = 0.015 * direction_norm
 
-    aqueduct_v3 = pv.Cylinder(
+    aqueduct_v4 = pv.Cylinder(
         center=(orig_center + shift).tolist(),
         direction=direction.tolist(),
         radius=0.004,
         height=0.03,
     ).triangulate()
+    aqueduct_v4 = aqueduct_v4.boolean_intersection(parenchyma)
 
-    aqueduct_v4 = pv.Cylinder(
+    aqueduct_v3 = pv.Cylinder(
         center=(orig_center - shift).tolist(),
         direction=direction.tolist(),
         radius=0.004,
@@ -103,11 +105,6 @@ def mesh(
 ):
     """Generates the volumetric mesh using fTetWild and tags boundaries for FEniCSx."""
     import wildmeshing as wm
-    import dolfinx
-    import ufl
-    import basix
-    from mpi4py import MPI
-    from dolfinx.io import XDMFFile
 
     output_dir = Path("meshes") / name
     output_dir.mkdir(exist_ok=True, parents=True)
@@ -129,8 +126,8 @@ def mesh(
                 "operation": "union",
                 "left": {
                     "operation": "union",
-                    "left": str(stl_dir / "aqueduct_v3.stl"),
-                    "right": str(stl_dir / "aqueduct_v4.stl"),
+                    "left": str(stl_dir / "aqueduct_v4.stl"),
+                    "right": str(stl_dir / "aqueduct_v3.stl"),
                 },
                 "right": str(stl_dir / "ventricle.stl"),
             },
@@ -160,6 +157,12 @@ def mesh(
     tetra.load_csg_tree(json.dumps(csg_dict))
     tetra.tetrahedralize()
     point_array, cell_array, marker = tetra.get_tet_mesh()
+
+    import basix
+    import dolfinx
+    import ufl
+    from dolfinx.io import XDMFFile
+    from mpi4py import MPI
 
     # 2. Re-map fTetWild markers
     print("Mapping subdomains via original np.isin logic...")
@@ -248,7 +251,7 @@ def mesh(
 
     # Either tag a single interface (1) or ependyma (11) and pia (12) separately
     if separate_interfaces:
-        print("Using separate tags for Pia (11) and Ependyma (12)...")
+        print("Using separate tags for Pia (11), Ependyma (12), and SV (13)...")
         pia_facets = get_internal_interface_facets(ct2, doms=[1, 2])
         ependyma_facets_1 = get_internal_interface_facets(ct2, doms=[2, 4])
         ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 5])
@@ -256,9 +259,15 @@ def mesh(
         ependyma_facets = np.concatenate(
             [ependyma_facets_1, ependyma_facets_2, ependyma_facets_3]
         )
+        # SV (Foramina): Interface between SAS fluid (1) and Ventricles (4,5,6)
+        sv_facets_1 = get_internal_interface_facets(ct2, doms=[1, 4])
+        sv_facets_2 = get_internal_interface_facets(ct2, doms=[1, 5])
+        sv_facets_3 = get_internal_interface_facets(ct2, doms=[1, 6])
+        sv_facets = np.concatenate([sv_facets_1, sv_facets_2, sv_facets_3])
 
         marker_values[pia_facets] = PIA_ID
         marker_values[ependyma_facets] = EPENDYMA_ID
+        marker_values[sv_facets] = SV_ID
     else:
         print("Using unified interface tag (1)...")
         tissue_csf_facets = get_internal_interface_facets(ct, doms=[1, 2])
@@ -293,7 +302,7 @@ def mesh(
         xdmf.write_meshtags(bm, domain.geometry)
 
     print(f"Number of cells: {domain.topology.index_map(tdim).size_local}")
-    print(f"Process complete. Mesh written to {output_dir.absolute()}.")
+    print(f"Meshing complete. Mesh written to {output_dir.absolute()}.")
 
 
 if __name__ == "__main__":
