@@ -48,21 +48,26 @@ def surfaces(
     orig_center = np.array([0.0, 0.03, -0.03])
     direction = np.array([0.0, 1.0, -1.0])
     direction_norm = direction / np.linalg.norm(direction)
-    shift = 0.015 * direction_norm
 
+    # Calculate distance to parenchyma surface
+    orig_dist = np.linalg.norm(orig_center)
+    v4_height = 0.07 - orig_dist
+    shift_v4 = (v4_height / 2.0) * direction_norm
     aqueduct_v4 = pv.Cylinder(
-        center=(orig_center + shift).tolist(),
+        center=(orig_center + shift_v4).tolist(),
         direction=direction.tolist(),
         radius=0.004,
-        height=0.03,
+        height=v4_height,
     ).triangulate()
-    aqueduct_v4 = aqueduct_v4.boolean_intersection(parenchyma)
 
+    v3_height = 0.03
+    shift_v3 = (v3_height / 2.0) * direction_norm
+    
     aqueduct_v3 = pv.Cylinder(
-        center=(orig_center - shift).tolist(),
+        center=(orig_center - shift_v3).tolist(),
         direction=direction.tolist(),
         radius=0.004,
-        height=0.03,
+        height=v3_height,
     ).triangulate()
 
     if show_plot:
@@ -96,11 +101,6 @@ def mesh(
     ),
     name: Path = typer.Option(
         Path("mesh_out"), help="Name for saved FEniCSx XDMF files."
-    ),
-    separate_interfaces: bool = typer.Option(
-        False,
-        "--separate-interfaces",
-        help="Tag Pia (11) and Ependyma (12) separately instead of a unified interface tag (1).",
     ),
 ):
     """Generates the volumetric mesh using fTetWild and tags boundaries for FEniCSx."""
@@ -249,47 +249,55 @@ def mesh(
     )
     spinal_cord_facets = get_external_boundary_facets(ct, [POROUS_ID])
 
-    # Either tag a single interface (1) or ependyma (11) and pia (12) separately
-    if separate_interfaces:
-        print("Using separate tags for Pia (11), Ependyma (12), and SV (13)...")
-        pia_facets = get_internal_interface_facets(ct2, doms=[1, 2])
-        ependyma_facets_1 = get_internal_interface_facets(ct2, doms=[2, 4])
-        ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 5])
-        ependyma_facets_3 = get_internal_interface_facets(ct2, doms=[2, 6])
-        ependyma_facets = np.concatenate(
-            [ependyma_facets_1, ependyma_facets_2, ependyma_facets_3]
-        )
-        # SV (Foramina): Interface between SAS fluid (1) and Ventricles (4,5,6)
-        sv_facets_1 = get_internal_interface_facets(ct2, doms=[1, 4])
-        sv_facets_2 = get_internal_interface_facets(ct2, doms=[1, 5])
-        sv_facets_3 = get_internal_interface_facets(ct2, doms=[1, 6])
-        sv_facets = np.concatenate([sv_facets_1, sv_facets_2, sv_facets_3])
+    # Initialize two separate arrays for the boundary tags
+    marker_values_unified = np.zeros_like(marker_values)
+    marker_values_split = np.zeros_like(marker_values)
 
-        marker_values[pia_facets] = PIA_ID
-        marker_values[ependyma_facets] = EPENDYMA_ID
-        marker_values[sv_facets] = SV_ID
-    else:
-        print("Using unified interface tag (1)...")
-        tissue_csf_facets = get_internal_interface_facets(ct, doms=[1, 2])
-        marker_values[tissue_csf_facets] = INTERFACE_ID
+    print("Computing unified interface tags...")
+    tissue_csf_facets = get_internal_interface_facets(ct, doms=[1, 2])
+    marker_values_unified[tissue_csf_facets] = INTERFACE_ID
 
-    # Apply common markers
-    marker_values[aqueduct_facets] = AQUEDUCT_ID
-    marker_values[outer_facets] = SKULL_ID
-    marker_values[bottom_facets] = SPINAL_CANAL_ID
-    marker_values[spinal_cord_facets] = SPINAL_CORD_ID
+    print("Computing separate tags for Pia (11), Ependyma (12), and SV (13)...")
+    pia_facets = get_internal_interface_facets(ct2, doms=[1, 2])
+    
+    ependyma_facets_1 = get_internal_interface_facets(ct2, doms=[2, 4])
+    ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 5])
+    ependyma_facets_3 = get_internal_interface_facets(ct2, doms=[2, 6])
+    ependyma_facets = np.concatenate(
+        [ependyma_facets_1, ependyma_facets_2, ependyma_facets_3]
+    )
+    
+    # SV (Foramina): Interface between SAS fluid (1) and Ventricles (4,5,6)
+    sv_facets_1 = get_internal_interface_facets(ct2, doms=[1, 4])
+    sv_facets_2 = get_internal_interface_facets(ct2, doms=[1, 5])
+    sv_facets_3 = get_internal_interface_facets(ct2, doms=[1, 6])
+    sv_facets = np.concatenate([sv_facets_1, sv_facets_2, sv_facets_3])
 
-    # Filter unmarked facets and create MeshTags
-    tagged_indices = np.where(marker_values != 0)[0].astype(np.int32)
-    tagged_values = marker_values[tagged_indices]
+    # Assign split IDs
+    marker_values_split[pia_facets] = PIA_ID
+    marker_values_split[ependyma_facets] = EPENDYMA_ID
+    marker_values_split[sv_facets] = SV_ID
 
-    bm = dolfinx.mesh.meshtags(domain, fdim, tagged_indices, tagged_values)
+    # Apply common markers to BOTH tagging arrays
+    for mv in (marker_values_unified, marker_values_split):
+        mv[aqueduct_facets] = AQUEDUCT_ID
+        mv[outer_facets] = SKULL_ID
+        mv[bottom_facets] = SPINAL_CANAL_ID
+        mv[spinal_cord_facets] = SPINAL_CORD_ID
+
+    # Filter unmarked facets and create MeshTags for unified boundaries
+    idx_uni = np.where(marker_values_unified != 0)[0].astype(np.int32)
+    bm_unified = dolfinx.mesh.meshtags(domain, fdim, idx_uni, marker_values_unified[idx_uni])
+    bm_unified.name = "boundaries"
+
+    # Filter unmarked facets and create MeshTags for split boundaries
+    idx_split = np.where(marker_values_split != 0)[0].astype(np.int32)
+    bm_split = dolfinx.mesh.meshtags(domain, fdim, idx_split, marker_values_split[idx_split])
+    bm_split.name = "boundaries_split"
 
     # 5. Export mesh to XDMF
     print("Exporting mesh and mesh tags to XDMF...")
 
-    # Rename mesh tags
-    bm.name = "boundaries"
     ct.name = "subdomains"
     ct2.name = "subdomains_ftetwild"
 
@@ -299,7 +307,8 @@ def mesh(
         xdmf.write_mesh(domain)
         xdmf.write_meshtags(ct, domain.geometry)
         xdmf.write_meshtags(ct2, domain.geometry)
-        xdmf.write_meshtags(bm, domain.geometry)
+        xdmf.write_meshtags(bm_unified, domain.geometry)
+        xdmf.write_meshtags(bm_split, domain.geometry)
 
     print(f"Number of cells: {domain.topology.index_map(tdim).size_local}")
     print(f"Meshing complete. Mesh written to {output_dir.absolute()}.")
