@@ -18,7 +18,10 @@ boundaries:
   aqueduct: 5
 
 interfaces:
-  interface: 1
+  full: 1
+  pia: 11
+  ependyma: 12
+  sv: 13
 
 probes:
   parenchyma:
