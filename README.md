@@ -101,9 +101,18 @@ The `boundaries` facet tags contain:
 | **`3`** | Boundary | Spinal Canal | Bottom fluid boundary |
 | **`4`** | Boundary | Spinal Cord | Bottom porous boundary |
 | **`5`** | Interface | Aqueduct | Internal interface for flow computation |
-| **`11`** | Interface | Pia Membrane | Used if `--separate-interfaces` is set |
-| **`12`** | Interface | Ependyma | Used if `--separate-interfaces` is set |
-| **`13`** | Interface | SAS-ventricle connection | Used if `--separate-interfaces` is set |
+
+The `boundaries_split` facet tags contain:
+| ID | Type | Description | Notes |
+| :--- | :--- | :--- | :--- |
+| **`2`** | Boundary | Skull | Outer boundary |
+| **`3`** | Boundary | Spinal Canal | Bottom fluid boundary |
+| **`4`** | Boundary | Spinal Cord | Bottom porous boundary |
+| **`5`** | Interface | Aqueduct | Internal interface for flow computation |
+| **`11`** | Interface | Pia Membrane |  |
+| **`12`** | Interface | Ependyma |  |
+| **`13`** | Interface | SAS-ventricle connection |  |
+
 
 To read the mesh and mesh tags into FEniCSx, use
 
