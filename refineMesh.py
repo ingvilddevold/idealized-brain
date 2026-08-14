@@ -1,8 +1,8 @@
 import shutil
 from pathlib import Path
 
-import typer
 import dolfinx
+import typer
 from mpi4py import MPI
 
 app = typer.Typer(
@@ -52,6 +52,7 @@ def refine(
         current_domain.topology.create_connectivity(fdim, tdim)
 
         current_boundaries = xdmf.read_meshtags(current_domain, name="boundaries")
+        current_boundaries_split = xdmf.read_meshtags(current_domain, name="boundaries_split")
 
     num_cells = current_domain.topology.index_map(tdim).size_local
     typer.echo(f"Num cells before refinement: {num_cells}")
@@ -84,6 +85,12 @@ def refine(
             parent_cell_ref,
             parent_facet_ref,
         )
+        boundaries_split_ref = dolfinx.mesh.transfer_meshtag(
+            current_boundaries_split,
+            domain_ref,
+            parent_cell_ref,
+            parent_facet_ref,
+        )
 
         # Set up output directory
         out_name = f"{mesh_basename}Ref{i}"
@@ -94,6 +101,7 @@ def refine(
         subdomains_ref.name = "subdomains"
         subdomains_ref2.name = "subdomains_ftetwild"
         boundaries_ref.name = "boundaries"
+        boundaries_split_ref.name = "boundaries_split"
 
         typer.echo(f"Writing data to {out_dir}...")
         with dolfinx.io.XDMFFile(
@@ -103,6 +111,7 @@ def refine(
             xdmf.write_meshtags(subdomains_ref, domain_ref.geometry)
             xdmf.write_meshtags(subdomains_ref2, domain_ref.geometry)
             xdmf.write_meshtags(boundaries_ref, domain_ref.geometry)
+            xdmf.write_meshtags(boundaries_split_ref, domain_ref.geometry)
 
         # Copy config if requested and it exists
         if copy_config and config_file.exists():
@@ -116,6 +125,7 @@ def refine(
         current_subdomains = subdomains_ref
         current_subdomains2 = subdomains_ref2
         current_boundaries = boundaries_ref
+        current_boundaries = boundaries_split_ref
 
     typer.secho("\nAll refinements completed successfully.", fg=typer.colors.GREEN)
 
