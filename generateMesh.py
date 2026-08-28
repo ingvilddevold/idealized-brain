@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Annotated
 
 import numpy as np
 import pyvista as pv
@@ -24,12 +25,12 @@ AQUEDUCT_ID = 5
 
 @app.command()
 def surfaces(
-    output_dir: Path = typer.Option(
-        Path("surfaces"), help="Directory to save STL files."
-    ),
-    show_plot: bool = typer.Option(
-        False, "--show", help="Display the PyVista 3D plot before saving."
-    ),
+    output_dir: Annotated[
+        Path, typer.Option(help="Directory to save STL files.")
+    ] = Path("surfaces"),
+    show_plot: Annotated[
+        bool, typer.Option("--show", help="Display the PyVista 3D plot before saving.")
+    ] = False,
 ):
     """Generates the surface STLs required for the CSG tree."""
     output_dir.mkdir(exist_ok=True, parents=True)
@@ -62,7 +63,7 @@ def surfaces(
 
     v3_height = 0.03
     shift_v3 = (v3_height / 2.0) * direction_norm
-    
+
     aqueduct_v3 = pv.Cylinder(
         center=(orig_center - shift_v3).tolist(),
         direction=direction.tolist(),
@@ -96,12 +97,12 @@ def surfaces(
 
 @app.command()
 def mesh(
-    stl_dir: Path = typer.Option(
-        Path("surfaces"), help="Directory containing input STLs."
-    ),
-    name: Path = typer.Option(
-        Path("mesh_out"), help="Name for saved FEniCSx XDMF files."
-    ),
+    stl_dir: Annotated[
+        Path, typer.Option(Path("surfaces"), help="Directory containing input STLs.")
+    ],
+    name: Annotated[
+        Path, typer.Option(Path("mesh_out"), help="Name for saved FEniCSx XDMF files.")
+    ],
 ):
     """Generates the volumetric mesh using fTetWild and tags boundaries for FEniCSx."""
     import wildmeshing as wm
@@ -141,7 +142,7 @@ def mesh(
 
     def extract_paths(d):
         paths = []
-        for key, value in d.items():
+        for value in d.values():
             if isinstance(value, dict):
                 paths.extend(extract_paths(value))
             elif isinstance(value, str) and value.endswith(".stl"):
@@ -259,14 +260,14 @@ def mesh(
 
     print("Computing separate tags for Pia (11), Ependyma (12), and SV (13)...")
     pia_facets = get_internal_interface_facets(ct2, doms=[1, 2])
-    
+
     ependyma_facets_1 = get_internal_interface_facets(ct2, doms=[2, 4])
     ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 5])
     ependyma_facets_3 = get_internal_interface_facets(ct2, doms=[2, 3])
     ependyma_facets = np.concatenate(
         [ependyma_facets_1, ependyma_facets_2, ependyma_facets_3]
     )
-    
+
     # SV (Foramina): Interface between SAS fluid (1) and Ventricles (4,5,6)
     sv_facets_1 = get_internal_interface_facets(ct2, doms=[1, 4])
     sv_facets_2 = get_internal_interface_facets(ct2, doms=[1, 5])
@@ -287,12 +288,16 @@ def mesh(
 
     # Filter unmarked facets and create MeshTags for unified boundaries
     idx_uni = np.where(marker_values_unified != 0)[0].astype(np.int32)
-    bm_unified = dolfinx.mesh.meshtags(domain, fdim, idx_uni, marker_values_unified[idx_uni])
+    bm_unified = dolfinx.mesh.meshtags(
+        domain, fdim, idx_uni, marker_values_unified[idx_uni]
+    )
     bm_unified.name = "boundaries"
 
     # Filter unmarked facets and create MeshTags for split boundaries
     idx_split = np.where(marker_values_split != 0)[0].astype(np.int32)
-    bm_split = dolfinx.mesh.meshtags(domain, fdim, idx_split, marker_values_split[idx_split])
+    bm_split = dolfinx.mesh.meshtags(
+        domain, fdim, idx_split, marker_values_split[idx_split]
+    )
     bm_split.name = "boundaries_split"
 
     # 5. Export mesh to XDMF
