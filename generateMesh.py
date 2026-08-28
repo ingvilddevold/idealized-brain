@@ -174,12 +174,12 @@ def mesh(
 
     subdomains[np.isin(raw_markers, [5])] = 4  # V4
     subdomains[np.isin(raw_markers, [6])] = 5  # V3
-    subdomains[np.isin(raw_markers, [7])] = 6  # LV
+    subdomains[np.isin(raw_markers, [7])] = 3  # LV
 
-    labels = np.copy(subdomains)  # ftetwild labels 1-6
+    labels = np.copy(subdomains)  # ftetwild labels 1-5
 
     subdomains[np.isin(subdomains, [2])] = 100  # tmp to avoid conflict
-    subdomains[np.isin(subdomains, [1, 4, 5, 6])] = FLUID_ID
+    subdomains[np.isin(subdomains, [1, 3, 4, 5])] = FLUID_ID
     subdomains[np.isin(subdomains, [100])] = POROUS_ID
 
     # 3. Create FEniCSx mesh
@@ -262,7 +262,7 @@ def mesh(
     
     ependyma_facets_1 = get_internal_interface_facets(ct2, doms=[2, 4])
     ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 5])
-    ependyma_facets_3 = get_internal_interface_facets(ct2, doms=[2, 6])
+    ependyma_facets_3 = get_internal_interface_facets(ct2, doms=[2, 3])
     ependyma_facets = np.concatenate(
         [ependyma_facets_1, ependyma_facets_2, ependyma_facets_3]
     )
@@ -270,7 +270,7 @@ def mesh(
     # SV (Foramina): Interface between SAS fluid (1) and Ventricles (4,5,6)
     sv_facets_1 = get_internal_interface_facets(ct2, doms=[1, 4])
     sv_facets_2 = get_internal_interface_facets(ct2, doms=[1, 5])
-    sv_facets_3 = get_internal_interface_facets(ct2, doms=[1, 6])
+    sv_facets_3 = get_internal_interface_facets(ct2, doms=[1, 3])
     sv_facets = np.concatenate([sv_facets_1, sv_facets_2, sv_facets_3])
 
     # Assign split IDs
