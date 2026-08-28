@@ -44,7 +44,16 @@ Note: It is also possible to generate the mesh from the surface STLs with fTetWi
 ftetwild --csg csg.json --output mesh/idealizedBrainMesh -e 0.002 -l 0.05
 ```
 
-### 2. Uniform Mesh Refinement (refineMesh.py)
+### 2. Fixing Overconstrained Cells
+Splits tetrahedra that have three or more of their four faces on the domain boundary ("overconstrained cells"), while preserving all cell and facet tags on the new sub-cells/sub-facets.
+
+Should be run on the base (`idealized`) mesh produced by `generateMesh.py`, before running `refineMesh.py`.
+
+```bash
+python fixOverconstrainedCells.py fix meshes/idealized/idealized.xdmf -o meshes/idealized/idealized.xdmf
+```
+
+### 3. Uniform Mesh Refinement (refineMesh.py)
 Iteratively refines an existing FEniCSx mesh while correctly transferring cell (subdomain) and facet (boundary) tags to the newly created child meshes.
 
 **Refine a mesh:**
@@ -88,7 +97,7 @@ The `subdomains_ftetwild` further separates the fluid space (for postprocessing 
 | :--- | :--- | :--- | :--- |
 | **`1`** | Subdomain | Fluid | Subarachnoid space 
 | **`2`** | Subdomain | Porous | Parenchyma |
-| **`3`** | Subdomain | Fluid | Lateral ventricles (empty for idealized)
+| **`3`** | Subdomain | Fluid | Lateral ventricles
 | **`4`** | Subdomain | Fluid | Fourth ventricle
 | **`5`** | Subdomain | Fluid | Third ventricles
 
