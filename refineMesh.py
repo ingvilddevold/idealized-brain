@@ -125,7 +125,7 @@ def refine(
         current_subdomains = subdomains_ref
         current_subdomains2 = subdomains_ref2
         current_boundaries = boundaries_ref
-        current_boundaries = boundaries_split_ref
+        current_boundaries_split = boundaries_split_ref
 
     typer.secho("\nAll refinements completed successfully.", fg=typer.colors.GREEN)
 
