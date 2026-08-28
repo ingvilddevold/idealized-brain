@@ -1,5 +1,6 @@
 import warnings
 from pathlib import Path
+from typing import Annotated
 
 import dolfinx
 import numpy as np
@@ -122,9 +123,9 @@ def fix_overconstrained_cells(
     removed_facets = []
     new_vertex_counter = 0
 
-    new_cell_marker_arrays = {k: [] for k in cell_tags.keys()}
-    new_facet_marker_arrays = {k: [] for k in facet_tags.keys()}
-    new_marked_facets = {k: [] for k in facet_tags.keys()}
+    new_cell_marker_arrays = {k: [] for k in cell_tags}
+    new_facet_marker_arrays = {k: [] for k in facet_tags}
+    new_marked_facets = {k: [] for k in facet_tags}
 
     facet_tag_lookups = {
         k: dict(zip(ft.indices, ft.values)) for k, ft in facet_tags.items()
@@ -172,7 +173,7 @@ def fix_overconstrained_cells(
             )
 
             # Check all facet tags to see if this split facet was originally tagged
-            for k in facet_tags.keys():
+            for k in facet_tags:
                 if interior_facets[0] in facet_tag_lookups[k]:
                     new_marked_facets[k].append(split_facets)
                     for _ in range(3):
@@ -341,20 +342,12 @@ def fix_overconstrained_cells(
 
 @app.command()
 def fix(
-    infile: Path = typer.Argument(..., help="The input XDMF mesh file"),
-    outfile: Path = typer.Option(
-        None, "-o", "--output", help="The output XDMF mesh file"
-    ),
-    cell_tag_name1: str = typer.Option(
-        "subdomains", help="Name of the primary cell MeshTags"
-    ),
-    cell_tag_name2: str = typer.Option(
-        "subdomains_ftetwild", help="Name of the secondary cell MeshTags"
-    ),
-    facet_tag_name: str = typer.Option("boundaries", help="Name of the facet MeshTags"),
-    facet_tag_name2: str = typer.Option(
-        "boundaries_split", help="Name of the second facet MeshTags"
-    ),
+    infile: Annotated[Path, typer.Argument(help="The input XDMF mesh file")],
+    outfile: Annotated[Path | None, typer.Option("-o", "--output", help="The output XDMF mesh file")] = None,
+    cell_tag_name1: Annotated[str, typer.Option(help="Name of the primary cell MeshTags")] = "subdomains",
+    cell_tag_name2: Annotated[str, typer.Option(help="Name of the secondary cell MeshTags")] = "subdomains_ftetwild",
+    facet_tag_name: Annotated[str, typer.Option(help="Name of the facet MeshTags")] = "boundaries",
+    facet_tag_name2: Annotated[str, typer.Option(help="Name of the second facet MeshTags")] = "boundaries_split",
 ):
     """Refine cells that are overconstrained iteratively and preserve all cell and facet markers."""
 
