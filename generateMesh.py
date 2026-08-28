@@ -98,11 +98,11 @@ def surfaces(
 @app.command()
 def mesh(
     stl_dir: Annotated[
-        Path, typer.Option(Path("surfaces"), help="Directory containing input STLs.")
-    ],
+        Path, typer.Option(help="Directory containing input STLs.")
+    ] = Path("surfaces"),
     name: Annotated[
-        Path, typer.Option(Path("mesh_out"), help="Name for saved FEniCSx XDMF files.")
-    ],
+        Path, typer.Option(help="Name for saved FEniCSx XDMF files.")
+    ] = Path("mesh_out"),
 ):
     """Generates the volumetric mesh using fTetWild and tags boundaries for FEniCSx."""
     import wildmeshing as wm
