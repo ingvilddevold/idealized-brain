@@ -5,9 +5,7 @@ subdomains:
 regions:
   fluid:
     csf: 1
-    lv: 3
-    v4: 4
-    v3: 5
+    ventricles: [4, 5, 6]
   porous:
     parenchyma: 2
 
@@ -22,6 +20,9 @@ interfaces:
   pia: 11
   ependyma: 12
   sv: 13
+
+reduced_model:
+  r_f: 0.01
 
 probes:
   parenchyma:
