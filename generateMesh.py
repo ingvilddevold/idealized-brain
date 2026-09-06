@@ -28,6 +28,13 @@ def surfaces(
     output_dir: Annotated[
         Path, typer.Option(help="Directory to save STL files.")
     ] = Path("surfaces"),
+    skull_radius: Annotated[
+        float,
+        typer.Option(
+            help="Skull sphere radius (m). Together with the fixed 0.07 m "
+            "parenchyma radius, this sets the SAS gap thickness."
+        ),
+    ] = 0.08,
     show_plot: Annotated[
         bool, typer.Option("--show", help="Display the PyVista 3D plot before saving.")
     ] = False,
@@ -36,7 +43,7 @@ def surfaces(
     output_dir.mkdir(exist_ok=True, parents=True)
 
     print("Generating surface meshes...")
-    skull = pv.Sphere(radius=0.08)
+    skull = pv.Sphere(radius=skull_radius)
     parenchyma = pv.Sphere(radius=0.07)
     ventricle = pv.Sphere(radius=0.02)
     canal = pv.Cylinder(
