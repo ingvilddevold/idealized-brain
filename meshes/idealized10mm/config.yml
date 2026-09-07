@@ -5,7 +5,7 @@ subdomains:
 regions:
   fluid:
     csf: 1
-    ventricles: [4, 5, 6]
+    ventricles: [3, 4, 5]
   porous:
     parenchyma: 2
 
@@ -13,7 +13,6 @@ boundaries:
   rigid_skull: 2
   spinal_outlet: 3
   fixed_stem: 4
-  aqueduct: 5
 
 interfaces:
   full: 1
