@@ -59,7 +59,7 @@ Iteratively refines an existing FEniCSx mesh while correctly transferring cell (
 **Refine a mesh:**
 
 ```bash
-python refineMesh.py --input-dir mesh --levels 2
+python refineMesh.py --input-dir meshes/idealizedRef0 --levels 2
 ```
 This will read the base mesh and sequentially generate `Ref1`, `Ref2`, etc., in sibling directories.
 
@@ -68,7 +68,7 @@ After generating and refining the mesh, the directory structure will look simila
 ```plaintext
 .
 ├── meshes
-│   ├── idealized
+│   ├── idealizedRef0
 │   │   ├── config.yml
 │   │   ├── idealized.h5
 │   │   └── idealized.xdmf
