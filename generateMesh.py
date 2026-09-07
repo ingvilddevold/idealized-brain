@@ -48,13 +48,18 @@ def surfaces(
     output_dir.mkdir(exist_ok=True, parents=True)
 
     print("Generating surface meshes...")
+    parenchyma_radius = 0.07
+    cord_radius = 0.017
+    # Spinal canal CSF gap matches the cranial SAS gap thickness
+    canal_radius = cord_radius + (skull_radius - parenchyma_radius)
+
     skull = pv.Sphere(
         radius=skull_radius,
         theta_resolution=sphere_resolution,
         phi_resolution=sphere_resolution,
     )
     parenchyma = pv.Sphere(
-        radius=0.07,
+        radius=parenchyma_radius,
         theta_resolution=sphere_resolution,
         phi_resolution=sphere_resolution,
     )
@@ -64,10 +69,10 @@ def surfaces(
         phi_resolution=sphere_resolution,
     )
     canal = pv.Cylinder(
-        center=(0, 0, -0.105), direction=(0, 0, -1), radius=0.025, height=0.08
+        center=(0, 0, -0.105), direction=(0, 0, -1), radius=canal_radius, height=0.08
     ).triangulate()
     cord = pv.Cylinder(
-        center=(0, 0, -0.105), direction=(0, 0, -1), radius=0.017, height=0.08
+        center=(0, 0, -0.105), direction=(0, 0, -1), radius=cord_radius, height=0.08
     ).triangulate()
 
     orig_center = np.array([0.0, 0.03, -0.03])
@@ -75,7 +80,7 @@ def surfaces(
     direction_norm = direction / np.linalg.norm(direction)
 
     orig_dist = np.linalg.norm(orig_center)
-    v4_height = 0.07 - orig_dist
+    v4_height = parenchyma_radius - orig_dist
     v3_height = 0.03
     aqueduct_height = v3_height + v4_height
     aqueduct_center = orig_center + ((v4_height - v3_height) / 2.0) * direction_norm
