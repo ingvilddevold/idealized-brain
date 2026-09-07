@@ -32,6 +32,9 @@ def refine(
     mesh_basename = mesh_file.stem
     config_file = input_dir / "config.yml"
 
+    # Strip trailing "Ref0"
+    base_name = mesh_basename.removesuffix("Ref0")
+
     if not mesh_file.exists():
         typer.secho(f"Error: Could not find {mesh_file}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
@@ -93,8 +96,8 @@ def refine(
         )
 
         # Set up output directory
-        out_name = f"{mesh_basename}Ref{i}"
-        out_dir = input_dir.with_name(input_dir.name + f"Ref{i}")
+        out_name = f"{base_name}Ref{i}"
+        out_dir = input_dir.with_name(f"{base_name}Ref{i}")
         out_dir.mkdir(exist_ok=True, parents=True)
 
         # Export meshes
