@@ -20,7 +20,6 @@ SV_ID = 13
 SKULL_ID = 2
 SPINAL_CANAL_ID = 3
 SPINAL_CORD_ID = 4
-AQUEDUCT_ID = 5
 
 
 @app.command()
@@ -35,6 +34,12 @@ def surfaces(
             "parenchyma radius, this sets the SAS gap thickness."
         ),
     ] = 0.08,
+    sphere_resolution: Annotated[
+        int,
+        typer.Option(
+            help="Theta/phi resolution for the spheres."
+        ),
+    ] = 100,
     show_plot: Annotated[
         bool, typer.Option("--show", help="Display the PyVista 3D plot before saving.")
     ] = False,
@@ -43,9 +48,21 @@ def surfaces(
     output_dir.mkdir(exist_ok=True, parents=True)
 
     print("Generating surface meshes...")
-    skull = pv.Sphere(radius=skull_radius)
-    parenchyma = pv.Sphere(radius=0.07)
-    ventricle = pv.Sphere(radius=0.02)
+    skull = pv.Sphere(
+        radius=skull_radius,
+        theta_resolution=sphere_resolution,
+        phi_resolution=sphere_resolution,
+    )
+    parenchyma = pv.Sphere(
+        radius=0.07,
+        theta_resolution=sphere_resolution,
+        phi_resolution=sphere_resolution,
+    )
+    ventricle = pv.Sphere(
+        radius=0.02,
+        theta_resolution=sphere_resolution,
+        phi_resolution=sphere_resolution,
+    )
     canal = pv.Cylinder(
         center=(0, 0, -0.105), direction=(0, 0, -1), radius=0.025, height=0.08
     ).triangulate()
@@ -57,25 +74,16 @@ def surfaces(
     direction = np.array([0.0, 1.0, -1.0])
     direction_norm = direction / np.linalg.norm(direction)
 
-    # Calculate distance to parenchyma surface
     orig_dist = np.linalg.norm(orig_center)
     v4_height = 0.07 - orig_dist
-    shift_v4 = (v4_height / 2.0) * direction_norm
-    aqueduct_v4 = pv.Cylinder(
-        center=(orig_center + shift_v4).tolist(),
-        direction=direction.tolist(),
-        radius=0.004,
-        height=v4_height,
-    ).triangulate()
-
     v3_height = 0.03
-    shift_v3 = (v3_height / 2.0) * direction_norm
-
-    aqueduct_v3 = pv.Cylinder(
-        center=(orig_center - shift_v3).tolist(),
+    aqueduct_height = v3_height + v4_height
+    aqueduct_center = orig_center + ((v4_height - v3_height) / 2.0) * direction_norm
+    aqueduct = pv.Cylinder(
+        center=aqueduct_center.tolist(),
         direction=direction.tolist(),
         radius=0.004,
-        height=v3_height,
+        height=aqueduct_height,
     ).triangulate()
 
     if show_plot:
@@ -83,8 +91,7 @@ def surfaces(
         pl = pv.Plotter()
         pl.add_mesh(parenchyma, opacity=0.6, color="blue")
         pl.add_mesh(ventricle, color="red")
-        pl.add_mesh(aqueduct_v3, opacity=0.8, color="orange")
-        pl.add_mesh(aqueduct_v4, opacity=0.8, color="red")
+        pl.add_mesh(aqueduct, opacity=0.8, color="orange")
         pl.add_mesh(skull, opacity=0.2)
         pl.add_mesh(canal, opacity=0.2)
         pl.add_mesh(cord, opacity=0.7, color="blue")
@@ -97,8 +104,7 @@ def surfaces(
     cord.save(output_dir / "cord.stl")
     canal.save(output_dir / "canal.stl")
     ventricle.save(output_dir / "ventricle.stl")
-    aqueduct_v3.save(output_dir / "aqueduct_v3.stl")
-    aqueduct_v4.save(output_dir / "aqueduct_v4.stl")
+    aqueduct.save(output_dir / "aqueduct.stl")
     print("Surfaces generated successfully.")
 
 
@@ -110,6 +116,14 @@ def mesh(
     name: Annotated[
         Path, typer.Option(help="Name for saved FEniCSx XDMF files.")
     ] = Path("mesh_out"),
+    fineness: Annotated[
+        float,
+        typer.Option(
+            help="Target edge length as a fraction of the bounding box diagonal "
+            "(fTetWild's edge_length_r). Smaller values give a finer mesh with "
+            "more cells."
+        ),
+    ] = 0.05,
 ):
     """Generates the volumetric mesh using fTetWild and tags boundaries for FEniCSx."""
     import wildmeshing as wm
@@ -118,8 +132,8 @@ def mesh(
     output_dir.mkdir(exist_ok=True, parents=True)
 
     # 1. Volumetric meshing with fTetWild
-    print("Tetrahedralizing CSG tree with fTetWild...")
-    tetra = wm.Tetrahedralizer(epsilon=0.002, edge_length_r=0.05, coarsen=False)
+    print(f"Tetrahedralizing CSG tree with fTetWild (fineness={fineness})...")
+    tetra = wm.Tetrahedralizer(epsilon=0.002, edge_length_r=fineness, coarsen=False)
 
     csg_dict = {
         "operation": "union",
@@ -132,11 +146,7 @@ def mesh(
             },
             "right": {
                 "operation": "union",
-                "left": {
-                    "operation": "union",
-                    "left": str(stl_dir / "aqueduct_v4.stl"),
-                    "right": str(stl_dir / "aqueduct_v3.stl"),
-                },
+                "left": str(stl_dir / "aqueduct.stl"),
                 "right": str(stl_dir / "ventricle.stl"),
             },
         },
@@ -180,14 +190,13 @@ def mesh(
     subdomains[np.isin(raw_markers, [1, 2])] = 1
     subdomains[np.isin(raw_markers, [3, 4])] = 2  # parenchyma parts
 
-    subdomains[np.isin(raw_markers, [5])] = 4  # V4
-    subdomains[np.isin(raw_markers, [6])] = 5  # V3
-    subdomains[np.isin(raw_markers, [7])] = 3  # LV
+    subdomains[np.isin(raw_markers, [5])] = 4  # aqueduct
+    subdomains[np.isin(raw_markers, [6])] = 3  # LV
 
-    labels = np.copy(subdomains)  # ftetwild labels 1-5
+    labels = np.copy(subdomains)  # ftetwild labels 1-4
 
     subdomains[np.isin(subdomains, [2])] = 100  # tmp to avoid conflict
-    subdomains[np.isin(subdomains, [1, 3, 4, 5])] = FLUID_ID
+    subdomains[np.isin(subdomains, [1, 3, 4])] = FLUID_ID
     subdomains[np.isin(subdomains, [100])] = POROUS_ID
 
     # 3. Create FEniCSx mesh
@@ -247,9 +256,7 @@ def mesh(
                 target_facets.append(f)
         return np.array(target_facets, dtype=np.int32)
 
-    # Define aqueduct as interface between V4 and V3
-    aqueduct_facets = get_internal_interface_facets(ct2, doms=[4, 5])
-
+    domain.topology.create_connectivity(fdim, tdim)
     z_min = np.min(domain.geometry.x[:, 2])
     outer_facets = dolfinx.mesh.exterior_facet_indices(domain.topology)
     bottom_facets = dolfinx.mesh.locate_entities_boundary(
@@ -269,17 +276,13 @@ def mesh(
     pia_facets = get_internal_interface_facets(ct2, doms=[1, 2])
 
     ependyma_facets_1 = get_internal_interface_facets(ct2, doms=[2, 4])
-    ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 5])
-    ependyma_facets_3 = get_internal_interface_facets(ct2, doms=[2, 3])
-    ependyma_facets = np.concatenate(
-        [ependyma_facets_1, ependyma_facets_2, ependyma_facets_3]
-    )
+    ependyma_facets_2 = get_internal_interface_facets(ct2, doms=[2, 3])
+    ependyma_facets = np.concatenate([ependyma_facets_1, ependyma_facets_2])
 
-    # SV (Foramina): Interface between SAS fluid (1) and Ventricles (4,5,6)
+    # SV (Foramina): Interface between SAS fluid (1) and Ventricles (3,4)
     sv_facets_1 = get_internal_interface_facets(ct2, doms=[1, 4])
-    sv_facets_2 = get_internal_interface_facets(ct2, doms=[1, 5])
-    sv_facets_3 = get_internal_interface_facets(ct2, doms=[1, 3])
-    sv_facets = np.concatenate([sv_facets_1, sv_facets_2, sv_facets_3])
+    sv_facets_2 = get_internal_interface_facets(ct2, doms=[1, 3])
+    sv_facets = np.concatenate([sv_facets_1, sv_facets_2])
 
     # Assign split IDs
     marker_values_split[pia_facets] = PIA_ID
@@ -288,7 +291,6 @@ def mesh(
 
     # Apply common markers to BOTH tagging arrays
     for mv in (marker_values_unified, marker_values_split):
-        mv[aqueduct_facets] = AQUEDUCT_ID
         mv[outer_facets] = SKULL_ID
         mv[bottom_facets] = SPINAL_CANAL_ID
         mv[spinal_cord_facets] = SPINAL_CORD_ID
