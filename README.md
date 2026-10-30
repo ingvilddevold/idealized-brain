@@ -37,10 +37,17 @@ fTetWild meshes with a sizing field:
 
 ### Example meshes
 ```bash
-C="--aqueduct-edge-mm 3 --coarse-edge-mm 12 --grading 1.0"
-python pipeline.py --name idealizedsas5mm --sas-thickness-mm 5 --sas-cells-across 3   $C  # ~0.95M cells
-python pipeline.py --name idealizedsas2mm --sas-thickness-mm 2 --sas-cells-across 1.5 $C  # ~0.9M cells
-python pipeline.py --name idealizedsas1mm --sas-thickness-mm 1 --sas-cells-across 1   $C  # ~1.1M cells
+# ~0.95M cells
+python pipeline.py --name idealizedsas5mm --sas-thickness-mm 5 --sas-cells-across 3 \
+    --aqueduct-edge-mm 3 --coarse-edge-mm 12 --grading 1.0
+
+# ~0.9M cells
+python pipeline.py --name idealizedsas2mm --sas-thickness-mm 2 --sas-cells-across 1.5 \
+    --aqueduct-edge-mm 3 --coarse-edge-mm 12 --grading 1.0
+
+# ~1.1M cells
+python pipeline.py --name idealizedsas1mm --sas-thickness-mm 1 --sas-cells-across 1 \
+    --aqueduct-edge-mm 3 --coarse-edge-mm 12 --grading 1.0
 
 # Convergence series: 22k, 180k and 1.4M cells
 python pipeline.py --name idealizedsas10mm --sas-thickness-mm 10 --sas-cells-across 1 \
