@@ -340,14 +340,59 @@ def fix_overconstrained_cells(
     return new_cells_as_array.shape[0], new_mesh, out_cell_tags, out_facet_tags
 
 
+def fix_all_overconstrained_cells(
+    mesh: dolfinx.mesh.Mesh,
+    cell_tags: dict[str, dolfinx.mesh.MeshTags],
+    facet_tags: dict[str, dolfinx.mesh.MeshTags],
+):
+    """Repeatedly splits overconstrained cells until none are left."""
+    tdim = mesh.topology.dim
+    print(f"Number of cells before fix: {mesh.topology.index_map(tdim).size_global}")
+    iteration = 1
+    while True:
+        typer.echo(f"--- Fixing iteration {iteration} ---")
+        num_new_cells, mesh, cell_tags, facet_tags = fix_overconstrained_cells(
+            mesh, cell_tags, facet_tags
+        )
+        if num_new_cells == 0:
+            typer.echo("No more overconstrained cells found. Fix complete.")
+            break
+        iteration += 1
+    print(f"Number of cells after fix: {mesh.topology.index_map(tdim).size_global}")
+    return mesh, cell_tags, facet_tags
+
+
+def write_all_tags(
+    outfile: Path,
+    mesh: dolfinx.mesh.Mesh,
+    cell_tags: dict[str, dolfinx.mesh.MeshTags],
+    facet_tags: dict[str, dolfinx.mesh.MeshTags],
+):
+    """Writes the mesh and all tags into a single XDMF file."""
+    with XDMFFile(mesh.comm, outfile, "w") as xdmf:
+        xdmf.write_mesh(mesh)
+        for tag in [*cell_tags.values(), *facet_tags.values()]:
+            xdmf.write_meshtags(tag, mesh.geometry)
+
+
 @app.command()
 def fix(
     infile: Annotated[Path, typer.Argument(help="The input XDMF mesh file")],
-    outfile: Annotated[Path | None, typer.Option("-o", "--output", help="The output XDMF mesh file")] = None,
-    cell_tag_name1: Annotated[str, typer.Option(help="Name of the primary cell MeshTags")] = "subdomains",
-    cell_tag_name2: Annotated[str, typer.Option(help="Name of the secondary cell MeshTags")] = "subdomains_ftetwild",
-    facet_tag_name: Annotated[str, typer.Option(help="Name of the facet MeshTags")] = "boundaries",
-    facet_tag_name2: Annotated[str, typer.Option(help="Name of the second facet MeshTags")] = "boundaries_split",
+    outfile: Annotated[
+        Path | None, typer.Option("-o", "--output", help="The output XDMF mesh file")
+    ] = None,
+    cell_tag_name1: Annotated[
+        str, typer.Option(help="Name of the primary cell MeshTags")
+    ] = "subdomains",
+    cell_tag_name2: Annotated[
+        str, typer.Option(help="Name of the secondary cell MeshTags")
+    ] = "subdomains_ftetwild",
+    facet_tag_name: Annotated[
+        str, typer.Option(help="Name of the facet MeshTags")
+    ] = "boundaries",
+    facet_tag_name2: Annotated[
+        str, typer.Option(help="Name of the second facet MeshTags")
+    ] = "boundaries_split",
 ):
     """Refine cells that are overconstrained iteratively and preserve all cell and facet markers."""
 
@@ -362,37 +407,11 @@ def fix(
     mesh, cell_tags, facet_tags = read_all_tags(
         infile, expected_cell_tags, expected_facet_tags
     )
-
-    print(
-        f"Number of cells before fix: {mesh.topology.index_map(mesh.topology.dim).size_global}"
+    mesh, cell_tags, facet_tags = fix_all_overconstrained_cells(
+        mesh, cell_tags, facet_tags
     )
-
-    iteration = 1
-    while True:
-        typer.echo(f"--- Fixing iteration {iteration} ---")
-        num_new_cells, mesh, cell_tags, facet_tags = fix_overconstrained_cells(
-            mesh, cell_tags, facet_tags
-        )
-
-        if num_new_cells == 0:
-            typer.echo("No more overconstrained cells found. Fix complete.")
-            break
-
-        iteration += 1
-
-    num_cells = mesh.topology.index_map(mesh.topology.dim).size_global
-    typer.echo(f"Number of cells after fix: {num_cells}")
     typer.echo(f"Writing fixed mesh and all tags to file: {outfile}")
-
-    # Write everything into a single, consolidated XDMF file
-    with XDMFFile(mesh.comm, outfile, "w") as xdmf:
-        xdmf.write_mesh(mesh)
-
-        for ct in cell_tags.values():
-            xdmf.write_meshtags(ct, mesh.geometry)
-
-        for ft in facet_tags.values():
-            xdmf.write_meshtags(ft, mesh.geometry)
+    write_all_tags(outfile, mesh, cell_tags, facet_tags)
 
 
 if __name__ == "__main__":
