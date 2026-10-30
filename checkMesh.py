@@ -1,23 +1,23 @@
 from pathlib import Path
 from typing import Annotated
 
+import dolfinx
 import numpy as np
 import pyvista as pv
 import typer
-import dolfinx
 from dolfinx.io import XDMFFile
 from mpi4py import MPI
 
 from generateMesh import (
-    POROUS_ID,
+    EPENDYMA_ID,
     FLUID_ID,
     INTERFACE_ID,
     PIA_ID,
-    EPENDYMA_ID,
-    SV_ID,
+    POROUS_ID,
     SKULL_ID,
     SPINAL_CANAL_ID,
     SPINAL_CORD_ID,
+    SV_ID,
 )
 
 app = typer.Typer(
@@ -35,8 +35,8 @@ FTETWILD_AQUEDUCT = 4
 FTETWILD_LABELS = {
     FTETWILD_SAS: "SAS fluid",
     FTETWILD_PARENCHYMA: "Parenchyma (porous)",
-    FTETWILD_LV: "Lateral ventricles",
-    FTETWILD_AQUEDUCT: "Aqueduct",
+    FTETWILD_LV: "Lateral and third ventricles",
+    FTETWILD_AQUEDUCT: "Aqueduct and fourth ventricle",
 }
 
 SUBDOMAIN_LABELS = {

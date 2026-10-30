@@ -316,8 +316,9 @@ def mesh(
 
     # fTetWild marks each cell with the (1-based) index of the last CSG input
     # containing it: 1 SAS, 2 parenchyma, 3 ventricle + aqueduct. The latter
-    # is split into LV (3) and aqueduct (4) by distance from the ventricle
-    # centre (the origin).
+    # is split into lateral + third ventricles (3, the sphere) and aqueduct +
+    # fourth ventricle (4, the tube) by distance from the ventricle centre
+    # (the origin).
     ventricle_radius = _ventricle_radius(ventricle_stl)
     centroid_dist = np.linalg.norm(point_array[cell_array].mean(axis=1), axis=1)
     subdomains[(raw_markers == 3) & (centroid_dist > ventricle_radius)] = 4
