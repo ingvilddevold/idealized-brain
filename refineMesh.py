@@ -2,12 +2,52 @@ import shutil
 from pathlib import Path
 
 import dolfinx
+import numpy as np
 import typer
 from mpi4py import MPI
 
 app = typer.Typer(
     help="CLI for iteratively refining FEniCSx meshes and transferring tags."
 )
+
+
+def refine_subdomain(
+    mesh: dolfinx.mesh.Mesh,
+    cell_tags: dict[str, dolfinx.mesh.MeshTags],
+    facet_tags: dict[str, dolfinx.mesh.MeshTags],
+    tag_name: str,
+    subdomain_id: int,
+) -> tuple[dolfinx.mesh.Mesh, dict[str, dolfinx.mesh.MeshTags], dict[str, dolfinx.mesh.MeshTags]]:
+    """Refines all edges of the cells tagged `subdomain_id` in `cell_tags[tag_name]`
+    and transfers every cell and facet tag to the refined mesh."""
+    tdim = mesh.topology.dim
+    mesh.topology.create_entities(1)
+    mesh.topology.create_connectivity(tdim, 1)
+    c_to_e = mesh.topology.connectivity(tdim, 1)
+
+    ct = cell_tags[tag_name]
+    cells = ct.indices[ct.values == subdomain_id]
+    edges = np.unique(np.hstack([c_to_e.links(c) for c in cells])).astype(np.int32)
+    print(f"Refining {len(edges)} edges in subdomain {subdomain_id} of '{tag_name}'...")
+
+    refined, parent_cells, parent_facets = dolfinx.mesh.refine(
+        mesh, edges=edges, option=dolfinx.mesh.RefinementOption.parent_cell_and_facet
+    )
+    refined.topology.create_entities(tdim - 1)
+
+    def transfer(tags, *parents):
+        new = {}
+        for name, tag in tags.items():
+            new[name] = dolfinx.mesh.transfer_meshtag(tag, refined, *parents)
+            new[name].name = name
+        return new
+
+    print(f"Number of cells after refinement: {refined.topology.index_map(tdim).size_global}")
+    return (
+        refined,
+        transfer(cell_tags, parent_cells),
+        transfer(facet_tags, parent_cells, parent_facets),
+    )
 
 
 @app.command()
@@ -28,7 +68,7 @@ def refine(
     Reads an XDMF mesh and its boundary/subdomain tags, refines them,
     and exports them to new folders for each refinement level.
     """
-    mesh_file = (input_dir / input_dir.name).with_suffix(".xdmf")
+    mesh_file = input_dir / f"{input_dir.name}.xdmf"
     mesh_basename = mesh_file.stem
     config_file = input_dir / "config.yml"
 
