@@ -22,7 +22,7 @@ This writes the STLs to `surfaces/idealizedsas5mm/` and the mesh to `meshes/idea
 
 Run `python pipeline.py --help` for all options.
 
-An example is included in `example/`: the surfaces and corase base mesh (22k cells) for a 10 mm SAS.
+An example is included in `example/`: the surfaces, coarse base mesh (23k cells) and `config.yml` for a 5 mm SAS.
 
 ### Geometry
 The geometry consists of three closed surfaces: skull with spinal canal, parenchyma with spinal cord, and ventricle with aqueduct. Each is a sphere with a tube, joined by a circular fillet. The SAS thickness is set with `--sas-thickness-mm`, and the spinal canal has the same CSF gap.
@@ -49,8 +49,9 @@ python pipeline.py --name idealizedsas2mm --sas-thickness-mm 2 --sas-cells-acros
 python pipeline.py --name idealizedsas1mm --sas-thickness-mm 1 --sas-cells-across 1 \
     --aqueduct-edge-mm 3 --coarse-edge-mm 12 --grading 1.0
 
-# Convergence series: 22k, 180k and 1.4M cells
-python pipeline.py --name idealizedsas10mm --sas-thickness-mm 10 --sas-cells-across 1 \
+# Convergence series: 23k, 185k and 1.5M cells. With 0.5 cells across, the
+# base mesh SAS is a single layer of flattened cells; refinement doubles it.
+python pipeline.py --name idealizedsas5mm --sas-thickness-mm 5 --sas-cells-across 0.5 \
     --aqueduct-edge-mm 5 --coarse-edge-mm 12 --grading 1.0 --epsilon 0.002 --levels 2
 ```
 
@@ -103,7 +104,7 @@ Reading a mesh in FEniCSx:
 import dolfinx
 from mpi4py import MPI
 
-with dolfinx.io.XDMFFile(MPI.COMM_WORLD, "example/idealizedsas10mmRef0.xdmf", "r") as xdmf:
+with dolfinx.io.XDMFFile(MPI.COMM_WORLD, "example/idealizedsas5mmRef0.xdmf", "r") as xdmf:
     domain = xdmf.read_mesh()
     subdomains = xdmf.read_meshtags(domain, name="subdomains")
     subdomains_ftetwild = xdmf.read_meshtags(domain, name="subdomains_ftetwild")

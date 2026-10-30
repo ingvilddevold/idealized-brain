@@ -1,0 +1,40 @@
+subdomains:
+  porous: 1
+  fluid: 2
+
+# IDs in subdomains_ftetwild
+regions:
+  fluid:
+    csf: 1
+    ventricles: [3, 4]
+  porous:
+    parenchyma: 2
+
+boundaries:
+  rigid_skull: 2
+  spinal_outlet: 3
+  fixed_stem: 4
+
+interfaces:
+  full: 1
+  pia: 11
+  ependyma: 12
+  sv: 13
+
+reduced_model:
+  r_f: 0.005
+
+probes:
+  parenchyma:
+    top_parenchyma: [0.0, 0.0, 0.065]
+  sas:
+    top_sas: [0.0, 0.0, 0.0725]
+  ventricular_system:
+    fourth_ventricle: [0.0, 0.0318198, -0.0318198]
+    lateral_ventricles: [0.0, 0.0, 0.0]
+
+cutting_planes:
+  aqueduct:
+    region_ids: [4]
+    point: [0.0, 0.0318198, -0.0318198]
+    normal: [0.0, 0.70710678, -0.70710678]
